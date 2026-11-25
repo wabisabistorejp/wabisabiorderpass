@@ -362,7 +362,7 @@
           <svg class="w-4 h-4 text-violetRim" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
-          <span id="copy-header-link-label">Copy DM Link</span>
+          <span id="copy-header-link-label">Copy Fixed Link</span>
         </button>
 
         <button
@@ -397,6 +397,9 @@
       <div class="flex items-center gap-2.5 flex-wrap">
         <span class="text-[11px] font-bold uppercase tracking-widest text-goldLux px-2.5 py-1 rounded-lg bg-goldLux/10 border border-goldLux/25">
           Saved Passes
+        </span>
+        <span id="cloud-sync-badge" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+          Supabase Cloud Sync
         </span>
         <div id="saved-passes-list" class="flex items-center gap-2 flex-wrap">
           <!-- Populated dynamically -->
@@ -782,17 +785,17 @@
         />
       </div>
 
-      <!-- Shareable Short URL Hash (#p=...) & Instagram DM Update -->
+      <!-- Permanent Client Link (?id=...) & Instagram DM Update -->
       <div class="rounded-2xl bg-obsidian/80 border border-violetRim/30 p-3.5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <span class="text-[11px] font-bold uppercase tracking-wider text-violetRim">
-            Short Pass Link (#p=...)
+            Permanent Client Link (?id=...)
           </span>
           <span
             id="share-url-length"
             class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"
           >
-            0 chars · Super Short DM
+            Live Cloud ID
           </span>
         </div>
         <div class="flex gap-2">
@@ -807,7 +810,7 @@
             type="button"
             class="px-3 py-2 rounded-xl text-xs font-bold bg-violetRim/25 hover:bg-violetRim/35 text-ivory border border-violetRim/50 transition shrink-0 cursor-pointer"
           >
-            <span id="copy-hash-link-label">Copy DM Link</span>
+            <span id="copy-hash-link-label">Copy Fixed Link</span>
           </button>
         </div>
 
@@ -834,7 +837,7 @@
 
       <!-- Delete Current Saved Pass -->
       <div class="pt-2 flex items-center justify-between text-xs text-muted">
-        <span>Saved locally in your browser</span>
+        <span>Synced with Supabase + local backup</span>
         <button
           id="btn-delete-pass"
           type="button"
@@ -850,14 +853,18 @@
   <script>
     /**
      * Wabi Sabi Store — Client Order Pass
-     * Self-contained client pass tracker with 3D tilt, URL #p= / #pass= state encoding,
-     * reliable clipboard copy + fallback selection modal, standalone HTML card export,
-     * PDF print support, and localStorage pass management.
+     * Connected to Supabase `passes` table (id text primary key, data jsonb)
+     * for permanent ?id=ORDER-CODE&c=1 client links + localStorage fallback.
      */
+
+    const SUPABASE_URL = 'https://qhyyjuijaptzhkdsjzqr.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_UNjxciNLTDi9J6YGVutfDw_tmMzrVrh';
+    const SUPABASE_TABLE = 'passes';
 
     const STORAGE_KEY = 'wabisabi_client_passes_v1';
     const CYCLE_CAPACITY = 30;
     const STAGES = ['Intake', 'WIP', 'Polish', 'Delivered'];
+    const LIVE_BASE_URL = 'https://wabisabistorejp.netlify.app';
 
     const PACKAGE_META = {
       Kintsugi: {
@@ -973,11 +980,22 @@
       }
     }
 
+    function detectRequestedOrderId() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const rawId = params.get('id') || params.get('code') || params.get('order') || '';
+        return String(rawId || '').trim().toUpperCase();
+      } catch (e) {
+        return '';
+      }
+    }
+
     let state = {
       passes: [],
       activePassId: null,
       builderVisible: true,
       clientReadOnly: detectClientReadOnlyMode(),
+      requestedOrderId: detectRequestedOrderId(),
     };
 
     const el = {
@@ -989,6 +1007,7 @@
       btnCloseFallback: document.getElementById('btn-close-fallback'),
       btnRetryFallbackCopy: document.getElementById('btn-retry-fallback-copy'),
       btnDoneFallback: document.getElementById('btn-done-fallback'),
+      cloudSyncBadge: document.getElementById('cloud-sync-badge'),
       savedPassesList: document.getElementById('saved-passes-list'),
       btnNewPass: document.getElementById('btn-new-pass'),
       btnResetSamples: document.getElementById('btn-reset-samples'),
@@ -1061,6 +1080,21 @@
       }, 2600);
     }
 
+    function setCloudBadge(statusText, tone = 'ok') {
+      if (!el.cloudSyncBadge) return;
+      el.cloudSyncBadge.textContent = statusText;
+      if (tone === 'ok') {
+        el.cloudSyncBadge.className =
+          'text-[11px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-400/30';
+      } else if (tone === 'warn') {
+        el.cloudSyncBadge.className =
+          'text-[11px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-400/35';
+      } else {
+        el.cloudSyncBadge.className =
+          'text-[11px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-400/35';
+      }
+    }
+
     function openFallbackCopyModal(text) {
       el.copyFallbackTextarea.value = text;
       el.copyFallbackModal.classList.remove('hidden');
@@ -1112,12 +1146,6 @@
       }, 1500);
     }
 
-    /**
-     * Reliable copy helper:
-     * 1) Tries navigator.clipboard.writeText when available
-     * 2) Falls back synchronously to document.execCommand('copy')
-     * 3) Opens an interactive selection modal if permissions are blocked
-     */
     async function copyText(text, successMsg = 'Copied to clipboard.', options = {}) {
       if (!text) return false;
       const { labelEl = null, copiedLabel = 'Copied!' } = options;
@@ -1200,96 +1228,51 @@
       return `${meta.codePrefix}-C${cStr}${yStr}-${sStr}`;
     }
 
-    // Compact URL Hash Encoding (#p=...) + Backwards Compatibility for Legacy #pass=...
-    const PKG_SHORT_MAP = {
-      Kintsugi: 'kin',
-      Kodawari: 'kod',
-      'Kōgei': 'kog',
-    };
-    const PKG_EXPAND_MAP = {
-      kin: 'Kintsugi',
-      kod: 'Kodawari',
-      kog: 'Kōgei',
-    };
-    const STATUS_SHORT_MAP = {
-      Reserved: 'r',
-      'In Production': 'p',
-      'Awaiting Review': 'a',
-      Completed: 'c',
-    };
-    const STATUS_EXPAND_MAP = {
-      r: 'Reserved',
-      p: 'In Production',
-      a: 'Awaiting Review',
-      c: 'Completed',
-    };
-
-    function toBase64Url(bytes) {
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    function isSupabaseConfigured() {
+      return (
+        Boolean(SUPABASE_URL) &&
+        SUPABASE_URL.startsWith('https://') &&
+        Boolean(SUPABASE_PUBLISHABLE_KEY) &&
+        !SUPABASE_PUBLISHABLE_KEY.includes('...')
+      );
     }
 
-    function fromBase64Url(raw) {
-      let base64 = raw.replace(/-/g, '+').replace(/_/g, '/');
-      while (base64.length % 4) base64 += '=';
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new TextDecoder().decode(bytes);
+    function supabaseHeaders() {
+      return {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Content-Type': 'application/json',
+      };
     }
 
-    function normalizeDecodedPass(parsed, fallbackIdPrefix) {
-      if (!parsed || typeof parsed !== 'object') return null;
-      const pkgRaw = parsed.packageTier || (parsed.k ? PKG_EXPAND_MAP[parsed.k] : null);
-      const packageTier = PACKAGE_META[pkgRaw] ? pkgRaw : 'Kōgei';
-      const cycle = Math.max(1, parseInt(parsed.cycle ?? parsed.c, 10) || 1);
-      const slot = Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(parsed.slot ?? parsed.s, 10) || 1));
-      const year = String(parsed.year ?? parsed.y ?? '26').replace(/[^0-9]/g, '').slice(-2) || '26';
-      const statusRaw = parsed.status || (parsed.st ? STATUS_EXPAND_MAP[parsed.st] : null);
-      const status = ['Reserved', 'In Production', 'Awaiting Review', 'Completed'].includes(statusRaw)
-        ? statusRaw
+    function normalizePassRecord(rawPass, fallbackCode = '') {
+      if (!rawPass || typeof rawPass !== 'object') return null;
+      const packageTier = PACKAGE_META[rawPass.packageTier] ? rawPass.packageTier : 'Kōgei';
+      const cycle = Math.max(1, parseInt(rawPass.cycle, 10) || 1);
+      const slot = Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(rawPass.slot, 10) || 1));
+      const year = String(rawPass.year || '26').replace(/[^0-9]/g, '').slice(-2) || '26';
+      const code = String(rawPass.code || fallbackCode || buildStandardCode({ packageTier, cycle, slot, year }))
+        .trim()
+        .toUpperCase();
+      const status = ['Reserved', 'In Production', 'Awaiting Review', 'Completed'].includes(rawPass.status)
+        ? rawPass.status
         : 'In Production';
-      const stageIndex = Math.min(3, Math.max(0, parseInt(parsed.stageIndex ?? parsed.g, 10) || 0));
-      const handle = String(parsed.handle ?? parsed.h ?? '@client').trim() || '@client';
-      const clientName = String(parsed.clientName ?? parsed.n ?? 'Studio Commission').trim();
-      const code =
-        String(parsed.code ?? parsed.cd ?? '')
-          .trim()
-          .toUpperCase() || `${PACKAGE_META[packageTier].codePrefix}-C${pad2(cycle)}${year}-${pad2(slot)}`;
-
-      const rawUpdates = Array.isArray(parsed.updates)
-        ? parsed.updates
-        : Array.isArray(parsed.u)
-          ? parsed.u.map((entry, idx) =>
-              Array.isArray(entry)
-                ? { id: `u-${idx}`, date: entry[1] || formatToday(), text: entry[0] || '' }
-                : entry
-            )
-          : [];
-
-      const updates = rawUpdates
-        .map((u, idx) => ({
-          id: u.id || `upd-${idx}`,
-          date: String(u.date || formatToday()),
-          text: String(u.text || '').trim(),
-        }))
-        .filter((u) => u.text.length > 0)
-        .slice(0, 20);
-
-      const linksSource = parsed.links || parsed.l || {};
-      const receipt = Array.isArray(linksSource) ? linksSource[0] : linksSource.receipt ?? linksSource.r;
-      const terms = Array.isArray(linksSource) ? linksSource[1] : linksSource.terms ?? linksSource.t;
-      const delivery = Array.isArray(linksSource) ? linksSource[2] : linksSource.delivery ?? linksSource.d;
+      const stageIndex = Math.min(3, Math.max(0, parseInt(rawPass.stageIndex, 10) || 0));
+      const updates = Array.isArray(rawPass.updates)
+        ? rawPass.updates
+            .map((u, idx) => ({
+              id: u.id || `upd-${idx}`,
+              date: String(u.date || formatToday()),
+              text: String(u.text || '').trim(),
+            }))
+            .filter((u) => u.text.length > 0)
+        : [];
+      const links = rawPass.links || {};
 
       return {
-        id: String(parsed.id || `${fallbackIdPrefix}-${Date.now().toString(36)}`),
-        handle,
-        clientName,
+        id: String(rawPass.id || `pass-${code.toLowerCase()}`),
+        handle: String(rawPass.handle || '@client').trim() || '@client',
+        clientName: String(rawPass.clientName || 'Studio Commission').trim(),
         code,
         packageTier,
         cycle,
@@ -1297,106 +1280,125 @@
         year,
         status,
         stageIndex,
-        updatedAt: String(parsed.updatedAt ?? parsed.dt ?? formatToday()),
+        updatedAt: String(rawPass.updatedAt || formatToday()),
         updates,
         links: {
-          receipt: String(receipt || '#'),
-          terms: String(terms || '#'),
-          delivery: String(delivery || '#'),
+          receipt: String(links.receipt || '#'),
+          terms: String(links.terms || '#'),
+          delivery: String(links.delivery || '#'),
         },
       };
     }
 
-    function encodePassToCompactHash(pass) {
-      const compactPayload = {
-        h: pass.handle || '@client',
-        cd: pass.code || buildStandardCode(pass),
-        k: PKG_SHORT_MAP[pass.packageTier] || 'kog',
-        c: Math.max(1, parseInt(pass.cycle, 10) || 1),
-        s: Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(pass.slot, 10) || 1)),
-        y: String(pass.year || '26').slice(-2),
-        st: STATUS_SHORT_MAP[pass.status] || 'p',
-        g: Math.min(3, Math.max(0, parseInt(pass.stageIndex, 10) || 0)),
-        dt: pass.updatedAt || formatToday(),
-      };
-
-      if (pass.clientName && pass.clientName !== 'Studio Commission') {
-        compactPayload.n = pass.clientName;
-      }
-
-      const compactUpdates = (pass.updates || [])
-        .slice(0, 4)
-        .filter((u) => u && u.text)
-        .map((u) => [String(u.text).slice(0, 140), String(u.date || formatToday()).slice(0, 14)]);
-      if (compactUpdates.length > 0) {
-        compactPayload.u = compactUpdates;
-      }
-
-      const l = pass.links || {};
-      const compactLinks = [
-        l.receipt && l.receipt !== '#' ? String(l.receipt).trim() : '',
-        l.terms && l.terms !== '#' ? String(l.terms).trim() : '',
-        l.delivery && l.delivery !== '#' ? String(l.delivery).trim() : '',
-      ];
-      if (compactLinks.some(Boolean)) {
-        compactPayload.l = compactLinks;
-      }
-
-      const bytes = new TextEncoder().encode(JSON.stringify(compactPayload));
-      return `#p=${toBase64Url(bytes)}`;
-    }
-
-    function decodePassFromHash(hashStr) {
-      if (!hashStr) return null;
+    async function fetchPassFromSupabase(orderCode) {
+      if (!isSupabaseConfigured() || !orderCode) return null;
+      const cleanCode = encodeURIComponent(orderCode.trim().toUpperCase());
+      const endpoint = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${cleanCode}&select=id,data`;
       try {
-        if (hashStr.includes('#p=')) {
-          const raw = hashStr.split('#p=')[1].split('&')[0];
-          if (!raw) return null;
-          const jsonStr = fromBase64Url(raw);
-          return normalizeDecodedPass(JSON.parse(jsonStr), 'dm-pass');
-        }
-        if (hashStr.includes('#pass=')) {
-          const raw = hashStr.split('#pass=')[1].split('&')[0];
-          if (!raw) return null;
-          const jsonStr = fromBase64Url(raw);
-          return normalizeDecodedPass(JSON.parse(jsonStr), 'legacy-pass');
-        }
-        return null;
+        const res = await fetch(endpoint, {
+          method: 'GET',
+          headers: supabaseHeaders(),
+          cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        const rows = await res.json();
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        const row = rows[0];
+        const payload = row && row.data && typeof row.data === 'object' ? row.data : {};
+        return normalizePassRecord({ ...payload, code: row.id || orderCode }, row.id || orderCode);
       } catch (e) {
         return null;
       }
     }
 
-    const LIVE_BASE_URL = 'https://wabisabistorejp.netlify.app';
+    async function fetchAllPassesFromSupabase() {
+      if (!isSupabaseConfigured()) return null;
+      const endpoint = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=id,data&limit=100`;
+      try {
+        const res = await fetch(endpoint, {
+          method: 'GET',
+          headers: supabaseHeaders(),
+          cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        const rows = await res.json();
+        if (!Array.isArray(rows)) return null;
+        return rows
+          .map((row) => {
+            const payload = row && row.data && typeof row.data === 'object' ? row.data : {};
+            return normalizePassRecord({ ...payload, code: row.id }, row.id);
+          })
+          .filter(Boolean);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function upsertPassToSupabase(pass) {
+      if (!isSupabaseConfigured() || !pass) return false;
+      const orderCode = String(pass.code || buildStandardCode(pass)).trim().toUpperCase();
+      pass.code = orderCode;
+      const endpoint = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`;
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            ...supabaseHeaders(),
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify([
+            {
+              id: orderCode,
+              data: pass,
+            },
+          ]),
+        });
+        if (!res.ok) {
+          setCloudBadge('Cloud Write Blocked', 'warn');
+          return false;
+        }
+        setCloudBadge('Supabase Cloud Sync', 'ok');
+        return true;
+      } catch (e) {
+        setCloudBadge('Offline / Local Only', 'warn');
+        return false;
+      }
+    }
+
+    async function deletePassFromSupabase(orderCode) {
+      if (!isSupabaseConfigured() || !orderCode) return false;
+      const cleanCode = encodeURIComponent(orderCode.trim().toUpperCase());
+      const endpoint = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${cleanCode}`;
+      try {
+        const res = await fetch(endpoint, {
+          method: 'DELETE',
+          headers: supabaseHeaders(),
+        });
+        return res.ok;
+      } catch (e) {
+        return false;
+      }
+    }
 
     function getShareBaseUrl() {
-      const currentBase = window.location.href.split('#')[0];
+      const currentBase = window.location.href.split('#')[0].split('?')[0];
       if (/^https?:\/\//i.test(currentBase)) {
         return currentBase;
       }
       return LIVE_BASE_URL;
     }
 
-    function buildShareableUrl(pass) {
-      const base = getShareBaseUrl().split('?')[0];
-      return `${base}?c=1${encodePassToCompactHash(pass)}`;
+    function buildPermanentClientUrl(pass) {
+      const base = getShareBaseUrl();
+      const orderCode = encodeURIComponent((pass.code || buildStandardCode(pass)).trim().toUpperCase());
+      return `${base}?id=${orderCode}&c=1`;
     }
 
     function updateUrlLengthIndicator(url) {
       const len = String(url || '').length;
-      if (len <= 180) {
-        el.shareUrlLength.textContent = `${len} chars · Super Short DM`;
-        el.shareUrlLength.className =
-          'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30';
-      } else if (len <= 320) {
-        el.shareUrlLength.textContent = `${len} chars · DM Friendly`;
-        el.shareUrlLength.className =
-          'text-[10px] font-mono px-2 py-0.5 rounded-full bg-goldLux/15 text-goldLux border border-goldLux/35';
-      } else {
-        el.shareUrlLength.textContent = `${len} chars · Long Link`;
-        el.shareUrlLength.className =
-          'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/35';
-      }
+      el.shareUrlLength.textContent = `${len} chars · Permanent ID`;
+      el.shareUrlLength.className =
+        'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30';
     }
 
     function buildInstagramDmText(pass, shareUrl) {
@@ -1405,7 +1407,9 @@
       const handle = pass.handle || '@client';
       const code = pass.code || buildStandardCode(pass);
       const line2 = latestNote ? `${stageLabel} — ${latestNote}` : `${stageLabel} (${pass.status || 'In Production'})`;
-      return `${handle} · ${code}\n${line2}\nPass: ${shareUrl}`;
+      return `${handle} · ${code}
+${line2}
+Live Pass: ${shareUrl}`;
     }
 
     function savePassesToStorage() {
@@ -1416,14 +1420,21 @@
       }
     }
 
-    function loadPasses() {
+    function persistPass(pass, syncCloud = true) {
+      savePassesToStorage();
+      if (syncCloud && pass) {
+        upsertPassToSupabase(pass);
+      }
+    }
+
+    function loadPassesFromStorageOrDefaults() {
       let loaded = [];
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            loaded = parsed;
+            loaded = parsed.map((item) => normalizePassRecord(item)).filter(Boolean);
           }
         }
       } catch (e) {
@@ -1436,30 +1447,59 @@
 
       state.passes = loaded;
       state.activePassId = state.passes[0].id;
+    }
 
-      // Check if URL has #p=... or legacy #pass=... payload
-      const sharedPass = decodePassFromHash(window.location.hash);
-      if (sharedPass) {
-        if (state.clientReadOnly) {
-          state.passes = [sharedPass];
-          state.activePassId = sharedPass.id;
-        } else {
+    async function hydrateFromSupabase() {
+      if (!isSupabaseConfigured()) {
+        setCloudBadge('Add Publishable Key', 'warn');
+        return;
+      }
+
+      if (state.requestedOrderId) {
+        const remotePass = await fetchPassFromSupabase(state.requestedOrderId);
+        if (remotePass) {
           const existingIdx = state.passes.findIndex(
-            (p) => p.id === sharedPass.id || p.code.toUpperCase() === sharedPass.code.toUpperCase()
+            (p) => (p.code || '').toUpperCase() === remotePass.code.toUpperCase()
           );
-          if (existingIdx !== -1) {
-            state.passes[existingIdx] = {
-              ...sharedPass,
-              id: state.passes[existingIdx].id,
-              updates: Array.isArray(sharedPass.updates) ? sharedPass.updates : [],
-            };
-            state.activePassId = state.passes[existingIdx].id;
+          if (state.clientReadOnly) {
+            state.passes = [remotePass];
+            state.activePassId = remotePass.id;
+          } else if (existingIdx !== -1) {
+            state.passes[existingIdx] = remotePass;
+            state.activePassId = remotePass.id;
           } else {
-            state.passes.unshift(sharedPass);
-            state.activePassId = sharedPass.id;
+            state.passes.unshift(remotePass);
+            state.activePassId = remotePass.id;
           }
           savePassesToStorage();
-          showToast(`Loaded shared pass: ${sharedPass.code}`, '✦');
+          syncEditorInputs(getActivePass());
+          renderAll();
+          setCloudBadge('Supabase Cloud Sync', 'ok');
+          return;
+        }
+      }
+
+      if (!state.clientReadOnly) {
+        const remoteList = await fetchAllPassesFromSupabase();
+        if (Array.isArray(remoteList) && remoteList.length > 0) {
+          const mergedMap = new Map();
+          remoteList.forEach((rp) => {
+            mergedMap.set(rp.code.toUpperCase(), rp);
+          });
+          state.passes.forEach((lp) => {
+            const key = (lp.code || '').toUpperCase();
+            if (!mergedMap.has(key)) {
+              mergedMap.set(key, lp);
+            }
+          });
+          state.passes = Array.from(mergedMap.values());
+          if (!state.passes.some((p) => p.id === state.activePassId)) {
+            state.activePassId = state.passes[0].id;
+          }
+          savePassesToStorage();
+          syncEditorInputs(getActivePass());
+          renderAll();
+          setCloudBadge('Supabase Cloud Sync', 'ok');
         }
       }
     }
@@ -1566,7 +1606,7 @@
               el.editStatus.value = 'In Production';
             }
             pass.updatedAt = formatToday();
-            savePassesToStorage();
+            persistPass(pass, true);
             renderAll();
             showToast(`${pass.code} set to ${stageName}`, '✦');
           });
@@ -1648,7 +1688,7 @@
             };
             pass.updatedAt = formatToday();
             editingNoteId = null;
-            savePassesToStorage();
+            persistPass(pass, true);
             renderAll();
             showToast('Studio note updated.', '✦');
           };
@@ -1717,7 +1757,7 @@
               editingNoteId = null;
             }
             pass.updatedAt = formatToday();
-            savePassesToStorage();
+            persistPass(pass, true);
             renderAll();
             showToast('Studio note removed.', '✦');
           });
@@ -1754,16 +1794,10 @@
       el.linkTerms.href = sanitizeUrl(links.terms);
       el.linkDelivery.href = sanitizeUrl(links.delivery);
 
-      const shareUrl = buildShareableUrl(pass);
-      el.shareUrlOutput.value = shareUrl;
-      updateUrlLengthIndicator(shareUrl);
-      el.igDmMessage.value = buildInstagramDmText(pass, shareUrl);
-
-      try {
-        window.history.replaceState(null, '', encodePassToCompactHash(pass));
-      } catch (e) {
-        // Ignore history restriction in sandboxed iframes
-      }
+      const permanentUrl = buildPermanentClientUrl(pass);
+      el.shareUrlOutput.value = permanentUrl;
+      updateUrlLengthIndicator(permanentUrl);
+      el.igDmMessage.value = buildInstagramDmText(pass, permanentUrl);
     }
 
     function renderAll() {
@@ -1886,7 +1920,6 @@
       showToast(`Exported standalone HTML for ${pass.code}`, '✦');
     }
 
-    // Wire Editor & Action Listeners
     function bindEvents() {
       el.btnCloseFallback.addEventListener('click', closeFallbackCopyModal);
       el.btnDoneFallback.addEventListener('click', closeFallbackCopyModal);
@@ -1936,7 +1969,7 @@
       el.btnCopyShareLink.addEventListener('click', () => {
         const pass = getActivePass();
         if (pass) {
-          copyText(buildShareableUrl(pass), 'Copied short DM pass link!', {
+          copyText(buildPermanentClientUrl(pass), 'Copied permanent client link!', {
             labelEl: el.copyHeaderLinkLabel,
             copiedLabel: 'Copied!',
           });
@@ -1944,7 +1977,7 @@
       });
 
       el.btnCopyHashLink.addEventListener('click', () => {
-        copyText(el.shareUrlOutput.value, 'Copied short #p= link for Instagram DM!', {
+        copyText(el.shareUrlOutput.value, 'Copied permanent ?id= client link!', {
           labelEl: el.copyHashLinkLabel,
           copiedLabel: 'Copied!',
         });
@@ -1966,8 +1999,7 @@
         window.print();
       });
 
-      // Live edits from builder inputs (auto-persisted to localStorage + URL hash)
-      const onFieldChange = (shouldPersist = true) => {
+      const onFieldChange = () => {
         const pass = getActivePass();
         if (!pass) return;
         pass.handle = el.editHandle.value.trim() || '@client';
@@ -1983,9 +2015,7 @@
           delivery: el.editLinkDelivery.value.trim() || '#',
         };
         pass.updatedAt = formatToday();
-        if (shouldPersist) {
-          savePassesToStorage();
-        }
+        savePassesToStorage();
         renderAll();
       };
 
@@ -2011,7 +2041,7 @@
         pass.code = buildStandardCode(pass);
         el.editCode.value = pass.code;
         pass.updatedAt = formatToday();
-        savePassesToStorage();
+        persistPass(pass, true);
         renderAll();
         showToast(`Formatted code: ${pass.code}`, '✦');
       });
@@ -2032,7 +2062,7 @@
         });
         pass.updatedAt = formatToday();
         el.editNewNote.value = '';
-        savePassesToStorage();
+        persistPass(pass, true);
         renderAll();
         showToast('Studio update posted to pass.', '✦');
       });
@@ -2044,24 +2074,29 @@
         }
       });
 
-      el.btnSavePass.addEventListener('click', () => {
+      el.btnSavePass.addEventListener('click', async () => {
         const pass = getActivePass();
         if (!pass) return;
         onFieldChange();
-        savePassesToStorage();
+        const synced = await upsertPassToSupabase(pass);
         renderAll();
-        showToast(`Saved pass ${pass.code} to browser storage.`, '✦');
+        if (synced) {
+          showToast(`Saved ${pass.code} to Supabase cloud.`, '✦');
+        } else {
+          showToast(`Saved ${pass.code} locally (check Supabase RLS/key).`, '!');
+        }
       });
 
       el.btnNewPass.addEventListener('click', () => {
         const nextNum = state.passes.length + 155;
         const cycle = Math.ceil(nextNum / CYCLE_CAPACITY);
         const slot = ((nextNum - 1) % CYCLE_CAPACITY) + 1;
+        const code = `KOGEI-C${pad2(cycle)}26-${pad2(slot)}`;
         const newPass = {
           id: 'pass-' + Date.now().toString(36),
           handle: `@new.client${state.passes.length + 1}`,
           clientName: 'New Client • Studio Commission',
-          code: `KOGEI-C${pad2(cycle)}26-${pad2(slot)}`,
+          code,
           packageTier: 'Kōgei',
           cycle,
           slot,
@@ -2084,13 +2119,13 @@
         };
         state.passes.unshift(newPass);
         state.activePassId = newPass.id;
-        savePassesToStorage();
+        persistPass(newPass, true);
         syncEditorInputs(newPass);
         renderAll();
         showToast(`Created new pass ${newPass.code}`, '✦');
       });
 
-      el.btnDeletePass.addEventListener('click', () => {
+      el.btnDeletePass.addEventListener('click', async () => {
         if (state.passes.length <= 1) {
           showToast('Keep at least one active pass in the workspace.', '!');
           return;
@@ -2099,6 +2134,9 @@
         state.passes = state.passes.filter((p) => p.id !== state.activePassId);
         state.activePassId = state.passes[0].id;
         savePassesToStorage();
+        if (removed && removed.code) {
+          await deletePassFromSupabase(removed.code);
+        }
         syncEditorInputs(getActivePass());
         renderAll();
         showToast(`Removed pass ${removed ? removed.code : ''}`, '✦');
@@ -2111,27 +2149,6 @@
         syncEditorInputs(getActivePass());
         renderAll();
         showToast('Restored default sample passes.', '✦');
-      });
-
-      window.addEventListener('hashchange', () => {
-        const shared = decodePassFromHash(window.location.hash);
-        if (shared) {
-          const idx = state.passes.findIndex((p) => p.code.toUpperCase() === shared.code.toUpperCase());
-          if (idx !== -1) {
-            state.passes[idx] = {
-              ...shared,
-              id: state.passes[idx].id,
-              updates: Array.isArray(shared.updates) ? shared.updates : [],
-            };
-            state.activePassId = state.passes[idx].id;
-          } else {
-            state.passes.unshift(shared);
-            state.activePassId = shared.id;
-          }
-          savePassesToStorage();
-          syncEditorInputs(getActivePass());
-          renderAll();
-        }
       });
     }
 
@@ -2154,7 +2171,7 @@
     }
 
     // Boot
-    loadPasses();
+    loadPassesFromStorageOrDefaults();
     const initialPass = getActivePass();
     if (initialPass) {
       syncEditorInputs(initialPass);
@@ -2163,6 +2180,7 @@
     bindEvents();
     init3DTilt();
     renderAll();
+    hydrateFromSupabase();
   </script>
 </body>
 </html>
