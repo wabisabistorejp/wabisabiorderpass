@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wabi Sabi Store — Client Order Pass</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Cormorant Garamond, Cinzel, Plus Jakarta Sans, Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            serifDisplay: ['"Cormorant Garamond"', 'Cinzel', 'Georgia', 'serif'],
+            cinzel: ['Cinzel', '"Cormorant Garamond"', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            obsidian: '#0b0910',
+            plumDeep: '#14101d',
+            plumCard: '#1d162a',
+            goldLux: '#c9a24d',
+            violetRim: '#a855f7',
+            ivory: '#f5f0ff',
+            muted: '#a69bb8',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      --bg-obsidian: #0b0910;
+      --bg-plum-deep: #14101d;
+      --bg-plum-card: #1d162a;
+      --accent-gold: #c9a24d;
+      --accent-violet: #a855f7;
+      --text-ivory: #f5f0ff;
+      --text-muted: #a69bb8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg-obsidian);
+      color: var(--text-ivory);
+      font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+      background-image:
+        radial-gradient(ellipse 65% 45% at 15% 8%, rgba(168, 85, 247, 0.14), transparent 60%),
+        radial-gradient(ellipse 60% 45% at 88% 88%, rgba(201, 162, 77, 0.11), transparent 60%),
+        linear-gradient(180deg, #0b0910 0%, #100c18 55%, #0b0910 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Subtle tactile studio grid */
+    .studio-grid-bg {
+      background-image:
+        linear-gradient(to right, rgba(201, 162, 77, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(168, 85, 247, 0.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+
+    /* Smooth pulsing glow animation for Completed status */
+    @keyframes completedPulseGlow {
+      0%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.45));
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.72;
+        filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.95));
+        transform: scale(1.03);
+      }
+    }
+
+    .completed-pulse-text {
+      animation: completedPulseGlow 1.9s ease-in-out infinite;
+    }
+
+    .completed-pulse-dot {
+      animation: completedPulseGlow 1.9s ease-in-out infinite;
+    }
+
+    /* 3D Perspective Stage */
+    .pass-stage {
+      perspective: 1400px;
+    }
+
+    .pass-card-3d {
+      transform-style: preserve-3d;
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+      will-change: transform;
+      position: relative;
+      background:
+        radial-gradient(120% 90% at 10% 0%, rgba(168, 85, 247, 0.18), transparent 52%),
+        radial-gradient(110% 85% at 95% 100%, rgba(201, 162, 77, 0.16), transparent 55%),
+        linear-gradient(155deg, rgba(29, 22, 42, 0.96) 0%, rgba(20, 16, 29, 0.98) 100%);
+      border: 1px solid rgba(201, 162, 77, 0.34);
+      box-shadow:
+        0 28px 60px -18px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(168, 85, 247, 0.16) inset,
+        0 0 42px -12px rgba(168, 85, 247, 0.25);
+    }
+
+    /* Dynamic metallic sheen across the 3D pass */
+    .pass-sheen {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      background: radial-gradient(
+        520px circle at var(--shine-x, 50%) var(--shine-y, 35%),
+        rgba(245, 240, 255, 0.14),
+        rgba(201, 162, 77, 0.08) 32%,
+        transparent 68%
+      );
+      z-index: 2;
+    }
+
+    .pass-card-3d:hover .pass-sheen,
+    .pass-card-3d.is-tilting .pass-sheen {
+      opacity: 1;
+    }
+
+    /* Corner gold/violet kintsugi-inspired accents */
+    .pass-corner-tl {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 22px;
+      height: 22px;
+      border-top: 1.5px solid rgba(201, 162, 77, 0.65);
+      border-left: 1.5px solid rgba(201, 162, 77, 0.65);
+      border-top-left-radius: 6px;
+      pointer-events: none;
+    }
+
+    .pass-corner-br {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      border-bottom: 1.5px solid rgba(201, 162, 77, 0.65);
+      border-right: 1.5px solid rgba(201, 162, 77, 0.65);
+      border-bottom-right-radius: 6px;
+      pointer-events: none;
+    }
+
+    .luxury-panel {
+      background: linear-gradient(160deg, rgba(29, 22, 42, 0.88) 0%, rgba(20, 16, 29, 0.94) 100%);
+      border: 1px solid rgba(201, 162, 77, 0.22);
+      box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.72);
+    }
+
+    .luxury-input {
+      background-color: rgba(11, 9, 16, 0.78);
+      border: 1px solid rgba(201, 162, 77, 0.24);
+      color: var(--text-ivory);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .luxury-input:focus {
+      outline: none;
+      border-color: #c9a24d;
+      box-shadow: 0 0 0 3px rgba(201, 162, 77, 0.16), 0 0 0 1px rgba(168, 85, 247, 0.35);
+      background-color: rgba(14, 11, 22, 0.95);
+    }
+
+    .luxury-input::placeholder {
+      color: rgba(166, 155, 184, 0.55);
+    }
+
+    .gold-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201, 162, 77, 0.45), rgba(168, 85, 247, 0.35), transparent);
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0910;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(201, 162, 77, 0.28);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(201, 162, 77, 0.5);
+    }
+
+    /* Clean Print / Save as PDF Styles */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #14101d !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only-container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .pass-stage {
+        perspective: none !important;
+      }
+      .pass-card-3d {
+        transform: none !important;
+        background: #ffffff !important;
+        color: #14101d !important;
+        border: 1.5px solid #c9a24d !important;
+        box-shadow: none !important;
+      }
+      .pass-card-3d * {
+        color: #14101d !important;
+      }
+      .pass-sheen,
+      .pass-corner-tl,
+      .pass-corner-br {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="studio-grid-bg antialiased selection:bg-violetRim/40 selection:text-ivory pb-16">
+
+  <!-- Toast Notification -->
+  <div
+    id="toast"
+    role="status"
+    aria-live="polite"
+    class="fixed bottom-5 right-5 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none max-w-sm"
+  >
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-plumCard/95 border border-goldLux/50 shadow-2xl backdrop-blur-md">
+      <span id="toast-icon" class="text-goldLux text-base font-bold">✦</span>
+      <span id="toast-msg" class="text-xs sm:text-sm font-medium text-ivory">Action complete.</span>
+    </div>
+  </div>
+
+  <!-- Fallback Copy Modal (when clipboard permissions are blocked in sandboxed/local contexts) -->
+  <div
+    id="copy-fallback-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="copy-fallback-title"
+    class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-obsidian/80 backdrop-blur-sm"
+  >
+    <div class="luxury-panel w-full max-w-md rounded-2xl p-5 sm:p-6 space-y-4 border border-goldLux/45">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-goldLux">Manual Copy Helper</span>
+          <h3 id="copy-fallback-title" class="font-cinzel font-bold text-base sm:text-lg text-ivory mt-0.5">
+            Clipboard Blocked by Browser
+          </h3>
+        </div>
+        <button
+          id="btn-close-fallback"
+          type="button"
+          aria-label="Close copy helper"
+          class="px-2.5 py-1 rounded-lg text-xs text-muted hover:text-ivory bg-obsidian/70 border border-white/10 cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <p class="text-xs text-muted leading-relaxed">
+        Your browser or preview frame blocked automatic clipboard access. The text is selected below—press <kbd class="px-1.5 py-0.5 rounded bg-obsidian border border-goldLux/30 text-goldLux font-mono text-[11px]">Ctrl/Cmd + C</kbd> to copy it now.
+      </p>
+
+      <textarea
+        id="copy-fallback-textarea"
+        rows="3"
+        readonly
+        class="luxury-input w-full p-3 rounded-xl font-mono text-xs sm:text-sm text-goldLux select-all"
+      ></textarea>
+
+      <div class="flex items-center justify-end gap-2">
+        <button
+          id="btn-retry-fallback-copy"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold bg-goldLux/20 hover:bg-goldLux/30 text-goldLux border border-goldLux/40 transition cursor-pointer"
+        >
+          Select &amp; Try Copy Again
+        </button>
+        <button
+          id="btn-done-fallback"
+          type="button"
+          class="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-violetRim to-[#8b3dff] text-ivory transition cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="no-print sticky top-0 z-30 border-b border-goldLux/20 bg-obsidian/85 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-plumCard via-plumDeep to-obsidian border border-goldLux/45 flex items-center justify-center shadow-lg shadow-violetRim/10">
+          <span class="font-cinzel font-bold text-base text-goldLux tracking-wider">侘寂</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-cinzel font-bold text-base sm:text-lg tracking-wide text-ivory">Wabi Sabi Store</span>
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-widest bg-goldLux/15 text-goldLux border border-goldLux/30">
+              Client Order Pass
+            </span>
+          </div>
+          <p class="text-xs text-muted">Studio Commission Passport &amp; Live Production Tracker</p>
+        </div>
+      </div>
+
+      <!-- Quick Workspace Actions -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          id="btn-toggle-editor"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-plumCard hover:bg-plumDeep text-ivory border border-goldLux/35 transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-goldLux" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          <span id="toggle-editor-label">Hide Builder</span>
+        </button>
+
+        <button
+          id="btn-copy-share-link"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-violetRim/20 hover:bg-violetRim/30 text-ivory border border-violetRim/45 transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-violetRim" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span id="copy-header-link-label">Copy DM Link</span>
+        </button>
+
+        <button
+          id="btn-export-standalone"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-plumCard hover:bg-plumDeep text-goldLux border border-goldLux/35 transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span class="hidden sm:inline">Export HTML Card</span>
+          <span class="sm:hidden">HTML</span>
+        </button>
+
+        <button
+          id="btn-print-pdf"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-goldLux to-[#dfb965] hover:brightness-110 text-obsidian shadow-md shadow-goldLux/20 transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          <span>Print / Save PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Saved Passes Switcher Bar -->
+  <section class="no-print max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
+    <div class="luxury-panel rounded-2xl p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <span class="text-[11px] font-bold uppercase tracking-widest text-goldLux px-2.5 py-1 rounded-lg bg-goldLux/10 border border-goldLux/25">
+          Saved Passes
+        </span>
+        <div id="saved-passes-list" class="flex items-center gap-2 flex-wrap">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 self-end md:self-auto">
+        <button
+          id="btn-new-pass"
+          type="button"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-violetRim/20 hover:bg-violetRim/30 text-ivory border border-violetRim/40 transition cursor-pointer"
+        >
+          + New Pass
+        </button>
+        <button
+          id="btn-reset-samples"
+          type="button"
+          title="Restore default sample passes"
+          class="px-3 py-1.5 rounded-xl text-xs font-medium bg-obsidian/70 hover:bg-plumDeep text-muted hover:text-ivory border border-goldLux/20 transition cursor-pointer"
+        >
+          Reset Samples
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Workspace -->
+  <main class="print-only-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+
+    <!-- LEFT COLUMN: 3D Client Pass Card View (7 cols on desktop) -->
+    <section id="pass-view-column" class="lg:col-span-7 pass-stage">
+      <article
+        id="pass-card-3d"
+        class="pass-card-3d rounded-3xl p-6 sm:p-8 lg:p-9"
+        aria-label="Client Order Pass Card"
+      >
+        <div id="pass-sheen" class="pass-sheen"></div>
+        <div class="pass-corner-tl"></div>
+        <div class="pass-corner-br"></div>
+
+        <!-- Card Top Header -->
+        <div class="relative z-10 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-goldLux/90">
+              <span>✦</span>
+              <span>Wabi Sabi Studio Pass</span>
+            </div>
+            <h1 id="card-client-handle" class="font-serifDisplay font-bold text-3xl sm:text-4xl text-ivory mt-1 tracking-tight">
+              @sora.atelier
+            </h1>
+            <p id="card-client-name" class="text-xs sm:text-sm text-muted mt-0.5">
+              Sora Takahashi • Commissioned Studio Pass
+            </p>
+          </div>
+
+          <!-- Status Badge -->
+          <div class="flex flex-col items-start sm:items-end gap-2">
+            <span
+              id="card-status-badge"
+              class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase border bg-violetRim/20 text-ivory border-violetRim/50 shadow-sm"
+            >
+              <span id="card-status-dot" class="w-2 h-2 rounded-full bg-violetRim animate-pulse"></span>
+              <span id="card-status-text">In Production</span>
+            </span>
+            <span id="card-updated-at" class="text-[11px] font-mono text-muted">
+              Updated Nov 24, 2026
+            </span>
+          </div>
+        </div>
+
+        <!-- Client Code Spotlight Box -->
+        <div class="relative z-10 mt-6 rounded-2xl bg-obsidian/75 border border-goldLux/35 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="block text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
+              Official Client Code
+            </span>
+            <div id="card-client-code" class="font-mono font-extrabold text-2xl sm:text-3xl tracking-wider text-goldLux mt-1 select-all">
+              KOGEI-C0626-05
+            </div>
+          </div>
+
+          <button
+            id="btn-copy-card-code"
+            type="button"
+            class="no-print self-start sm:self-center px-3.5 py-2 rounded-xl text-xs font-bold bg-goldLux/15 hover:bg-goldLux/25 text-goldLux border border-goldLux/40 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <span id="copy-card-code-label">Copy Code</span>
+          </button>
+        </div>
+
+        <!-- Key Metadata Grid: Package Tier, Cycle & Slot, Edition & Year -->
+        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+          <div class="rounded-2xl bg-plumDeep/80 border border-goldLux/20 p-3.5">
+            <span class="block text-[10px] font-bold uppercase tracking-widest text-muted">Package Tier</span>
+            <p id="card-package-tier" class="font-cinzel font-bold text-base text-ivory mt-1">Kōgei</p>
+            <p id="card-package-desc" class="text-[11px] text-goldLux/90 mt-0.5">Deluxe Studio Edition</p>
+          </div>
+
+          <div class="rounded-2xl bg-plumDeep/80 border border-goldLux/20 p-3.5">
+            <span class="block text-[10px] font-bold uppercase tracking-widest text-muted">Cycle &amp; Slot</span>
+            <p id="card-cycle-slot" class="font-mono font-bold text-base text-ivory mt-1">Cycle 06 · Slot 05 / 30</p>
+            <p id="card-cycle-progress-text" class="text-[11px] text-muted mt-0.5">5 of 30 cycle slots active</p>
+          </div>
+
+          <div class="rounded-2xl bg-plumDeep/80 border border-goldLux/20 p-3.5">
+            <span class="block text-[10px] font-bold uppercase tracking-widest text-muted">Edition &amp; Year</span>
+            <p id="card-year-order" class="font-mono font-bold text-base text-ivory mt-1">2026 · #155</p>
+            <p class="text-[11px] text-muted mt-0.5">Cumulative studio log</p>
+          </div>
+        </div>
+
+        <div class="gold-divider my-6"></div>
+
+        <!-- Interactive 4-Stage Production Tracker -->
+        <div class="relative z-10">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+            <div>
+              <h2 class="font-cinzel font-bold text-sm sm:text-base tracking-wider uppercase text-ivory">
+                Production Tracker
+              </h2>
+              <p class="text-xs text-muted">Click any stage below to update live progress on this pass.</p>
+            </div>
+            <span id="card-stage-summary" class="font-mono text-xs font-semibold text-goldLux">
+              Stage 2 of 4 · WIP
+            </span>
+          </div>
+
+          <!-- Progress Track Bar -->
+          <div class="w-full h-2 rounded-full bg-obsidian/90 border border-goldLux/20 overflow-hidden mb-4">
+            <div
+              id="card-stage-bar"
+              class="h-full rounded-full bg-gradient-to-r from-violetRim via-goldLux to-[#e5c16c] transition-all duration-300"
+              style="width: 50%;"
+            ></div>
+          </div>
+
+          <!-- 4 Interactive Stage Buttons -->
+          <div id="stage-tracker-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <div class="gold-divider my-6"></div>
+
+        <!-- Studio Notes / Updates Feed -->
+        <div class="relative z-10">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-cinzel font-bold text-sm sm:text-base tracking-wider uppercase text-ivory">
+              Studio Notes &amp; Updates
+            </h2>
+            <span id="card-notes-count" class="text-[11px] font-mono text-muted">2 updates</span>
+          </div>
+
+          <div id="card-updates-feed" class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="gold-divider my-6"></div>
+
+        <!-- Useful Links Section -->
+        <div class="relative z-10">
+          <h2 class="font-cinzel font-bold text-sm sm:text-base tracking-wider uppercase text-ivory mb-3">
+            Useful Links &amp; Documents
+          </h2>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <a
+              id="link-receipt"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group rounded-xl bg-obsidian/70 hover:bg-plumDeep border border-goldLux/25 hover:border-goldLux/60 p-3 transition flex items-center justify-between gap-2"
+            >
+              <div class="min-w-0">
+                <span class="block text-xs font-bold text-ivory group-hover:text-goldLux transition truncate">Client Receipt</span>
+                <span class="block text-[11px] text-muted truncate">Invoice &amp; payment record</span>
+              </div>
+              <span class="text-goldLux text-sm shrink-0">↗</span>
+            </a>
+
+            <a
+              id="link-terms"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group rounded-xl bg-obsidian/70 hover:bg-plumDeep border border-goldLux/25 hover:border-goldLux/60 p-3 transition flex items-center justify-between gap-2"
+            >
+              <div class="min-w-0">
+                <span class="block text-xs font-bold text-ivory group-hover:text-goldLux transition truncate">Terms of Use</span>
+                <span class="block text-[11px] text-muted truncate">Commission &amp; usage policy</span>
+              </div>
+              <span class="text-goldLux text-sm shrink-0">↗</span>
+            </a>
+
+            <a
+              id="link-delivery"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group rounded-xl bg-obsidian/70 hover:bg-plumDeep border border-violetRim/30 hover:border-violetRim/70 p-3 transition flex items-center justify-between gap-2"
+            >
+              <div class="min-w-0">
+                <span class="block text-xs font-bold text-ivory group-hover:text-violetRim transition truncate">Preview / Delivery</span>
+                <span class="block text-[11px] text-muted truncate">WIP gallery &amp; final files</span>
+              </div>
+              <span class="text-violetRim text-sm shrink-0">↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="relative z-10 mt-6 pt-4 border-t border-goldLux/15 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
+          <span>Wabi Sabi Store · Imperfectly Crafted, Intentionally Kept</span>
+          <span class="font-mono text-goldLux/80">3D Pass Interactive</span>
+        </div>
+      </article>
+    </section>
+
+    <!-- RIGHT COLUMN: Client Pass Builder & Editor Panel (5 cols on desktop) -->
+    <aside id="builder-column" class="no-print lg:col-span-5 luxury-panel rounded-3xl p-5 sm:p-6 space-y-5">
+      <div class="flex items-center justify-between gap-2 pb-3.5 border-b border-goldLux/20">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-goldLux">Studio Builder</span>
+          <h2 class="font-cinzel font-bold text-lg text-ivory mt-0.5">Pass Editor &amp; Share Link</h2>
+        </div>
+        <button
+          id="btn-save-pass"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-violetRim to-[#8b3dff] hover:brightness-110 text-ivory shadow-md shadow-violetRim/25 transition cursor-pointer"
+        >
+          Save Pass
+        </button>
+      </div>
+
+      <!-- Client Handle & Name -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label for="edit-handle" class="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            Client Handle (@)
+          </label>
+          <input
+            id="edit-handle"
+            type="text"
+            placeholder="@client.handle"
+            class="luxury-input w-full px-3.5 py-2 rounded-xl text-sm"
+          />
+        </div>
+        <div>
+          <label for="edit-client-name" class="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            Client Name / Subtitle
+          </label>
+          <input
+            id="edit-client-name"
+            type="text"
+            placeholder="e.g. Sora Takahashi"
+            class="luxury-input w-full px-3.5 py-2 rounded-xl text-sm"
+          />
+        </div>
+      </div>
+
+      <!-- Client Code & Package Tier -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="edit-code" class="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Client Code
+            </label>
+            <button
+              id="btn-auto-code"
+              type="button"
+              class="text-[10px] font-semibold text-goldLux hover:underline cursor-pointer"
+            >
+              Auto-Format
+            </button>
+          </div>
+          <input
+            id="edit-code"
+            type="text"
+            placeholder="KOGEI-C0626-05"
+            class="luxury-input w-full px-3.5 py-2 rounded-xl font-mono text-sm uppercase"
+          />
+        </div>
+
+        <div>
+          <label for="edit-package" class="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            Package Tier
+          </label>
+          <select id="edit-package" class="luxury-input w-full px-3.5 py-2 rounded-xl text-sm">
+            <option value="Kintsugi">Kintsugi (Client Base Sculpt)</option>
+            <option value="Kodawari">Kodawari (Store Base Premium)</option>
+            <option value="Kōgei">Kōgei (Deluxe Studio Edition)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cycle, Slot & Order Status -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div>
+          <label for="edit-cycle" class="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            Cycle #
+          </label>
+          <input
+            id="edit-cycle"
+            type="number"
+            min="1"
+            max="999"
+            class="luxury-input w-full px-3 py-2 rounded-xl font-mono text-sm"
+          />
+        </div>
+        <div>
+          <label for="edit-slot" class="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            Slot (1–30)
+          </label>
+          <input
+            id="edit-slot"
+            type="number"
+            min="1"
+            max="30"
+            class="luxury-input w-full px-3 py-2 rounded-xl font-mono text-sm"
+          />
+        </div>
+        <div>
+          <label for="edit-status" class="block text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">
+            Order Status
+          </label>
+          <select id="edit-status" class="luxury-input w-full px-3 py-2 rounded-xl text-xs font-semibold">
+            <option value="Reserved">Reserved</option>
+            <option value="In Production">In Production</option>
+            <option value="Awaiting Review">Awaiting Review</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Post Studio Update / Note -->
+      <div class="rounded-2xl bg-obsidian/60 border border-goldLux/20 p-3.5 space-y-2.5">
+        <label for="edit-new-note" class="block text-[11px] font-bold uppercase tracking-wider text-goldLux">
+          Add Studio Note / Progress Update
+        </label>
+        <div class="flex gap-2">
+          <input
+            id="edit-new-note"
+            type="text"
+            placeholder="e.g. Base proportions locked; starting texture pass..."
+            class="luxury-input flex-1 px-3 py-2 rounded-xl text-xs"
+          />
+          <button
+            id="btn-add-note"
+            type="button"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold bg-goldLux/20 hover:bg-goldLux/30 text-goldLux border border-goldLux/40 transition shrink-0 cursor-pointer"
+          >
+            Post
+          </button>
+        </div>
+      </div>
+
+      <!-- Useful Links Inputs -->
+      <div class="rounded-2xl bg-obsidian/60 border border-goldLux/20 p-3.5 space-y-2.5">
+        <span class="block text-[11px] font-bold uppercase tracking-wider text-goldLux">
+          Useful Links (Receipt, Terms, Delivery)
+        </span>
+        <input
+          id="edit-link-receipt"
+          type="url"
+          placeholder="Client Receipt URL (https://...)"
+          class="luxury-input w-full px-3 py-1.5 rounded-xl text-xs"
+        />
+        <input
+          id="edit-link-terms"
+          type="url"
+          placeholder="Terms of Use URL (https://...)"
+          class="luxury-input w-full px-3 py-1.5 rounded-xl text-xs"
+        />
+        <input
+          id="edit-link-delivery"
+          type="url"
+          placeholder="Preview / Delivery URL (https://...)"
+          class="luxury-input w-full px-3 py-1.5 rounded-xl text-xs"
+        />
+      </div>
+
+      <!-- Shareable Short URL Hash (#p=...) & Instagram DM Update -->
+      <div class="rounded-2xl bg-obsidian/80 border border-violetRim/30 p-3.5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-violetRim">
+            Short Pass Link (#p=...)
+          </span>
+          <span
+            id="share-url-length"
+            class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"
+          >
+            0 chars · Super Short DM
+          </span>
+        </div>
+        <div class="flex gap-2">
+          <input
+            id="share-url-output"
+            type="text"
+            readonly
+            class="luxury-input flex-1 px-3 py-2 rounded-xl font-mono text-[11px] text-ivory/90 select-all"
+          />
+          <button
+            id="btn-copy-hash-link"
+            type="button"
+            class="px-3 py-2 rounded-xl text-xs font-bold bg-violetRim/25 hover:bg-violetRim/35 text-ivory border border-violetRim/50 transition shrink-0 cursor-pointer"
+          >
+            <span id="copy-hash-link-label">Copy DM Link</span>
+          </button>
+        </div>
+
+        <div class="pt-2 border-t border-white/10 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label for="ig-dm-message" class="text-[11px] font-bold uppercase tracking-wider text-goldLux">
+              Instagram DM Update Block
+            </label>
+            <button
+              id="btn-copy-ig-dm"
+              type="button"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-goldLux/20 hover:bg-goldLux/30 text-goldLux border border-goldLux/40 transition cursor-pointer"
+            >
+              <span id="copy-ig-dm-label">Copy DM Text</span>
+            </button>
+          </div>
+          <textarea
+            id="ig-dm-message"
+            rows="3"
+            class="luxury-input w-full px-3 py-2 rounded-xl text-xs leading-relaxed resize-none"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Delete Current Saved Pass -->
+      <div class="pt-2 flex items-center justify-between text-xs text-muted">
+        <span>Saved locally in your browser</span>
+        <button
+          id="btn-delete-pass"
+          type="button"
+          class="text-rose-400 hover:text-rose-300 font-semibold transition cursor-pointer"
+        >
+          Delete Pass
+        </button>
+      </div>
+    </aside>
+
+  </main>
+
+  <script>
+    /**
+     * Wabi Sabi Store — Client Order Pass
+     * Self-contained client pass tracker with 3D tilt, URL #p= / #pass= state encoding,
+     * reliable clipboard copy + fallback selection modal, standalone HTML card export,
+     * PDF print support, and localStorage pass management.
+     */
+
+    const STORAGE_KEY = 'wabisabi_client_passes_v1';
+    const CYCLE_CAPACITY = 30;
+    const STAGES = ['Intake', 'WIP', 'Polish', 'Delivered'];
+
+    const PACKAGE_META = {
+      Kintsugi: {
+        tier: 'Kintsugi',
+        desc: 'Client Base Sculpt',
+        codePrefix: 'KINTSUGI',
+      },
+      Kodawari: {
+        tier: 'Kodawari',
+        desc: 'Store Base Premium',
+        codePrefix: 'KODAWARI',
+      },
+      'Kōgei': {
+        tier: 'Kōgei',
+        desc: 'Deluxe Studio Edition',
+        codePrefix: 'KOGEI',
+      },
+    };
+
+    function createDefaultPasses() {
+      return [
+        {
+          id: 'pass-kogei-c0626-05',
+          handle: '@sora.atelier',
+          clientName: 'Sora Takahashi • Custom Commission',
+          code: 'KOGEI-C0626-05',
+          packageTier: 'Kōgei',
+          cycle: 6,
+          slot: 5,
+          year: '26',
+          status: 'In Production',
+          stageIndex: 1,
+          updatedAt: 'Nov 24, 2026',
+          updates: [
+            {
+              id: 'upd-1',
+              date: 'Nov 24, 2026',
+              text: 'WIP sculpt & silhouette blocking complete. Moving into secondary detail refinement.',
+            },
+            {
+              id: 'upd-2',
+              date: 'Nov 18, 2026',
+              text: 'Slot 05/30 locked in Cycle 06 and reference dossier verified.',
+            },
+          ],
+          links: {
+            receipt: 'https://wabisabistore.example/receipts/KOGEI-C0626-05',
+            terms: 'https://wabisabistore.example/terms-of-use',
+            delivery: 'https://wabisabistore.example/delivery/KOGEI-C0626-05',
+          },
+        },
+        {
+          id: 'pass-kodawari-c0626-02',
+          handle: '@mira.vfx',
+          clientName: 'Mira Lin • Studio Commission',
+          code: 'KODAWARI-C0626-02',
+          packageTier: 'Kodawari',
+          cycle: 6,
+          slot: 2,
+          year: '26',
+          status: 'Awaiting Review',
+          stageIndex: 2,
+          updatedAt: 'Nov 22, 2026',
+          updates: [
+            {
+              id: 'upd-3',
+              date: 'Nov 22, 2026',
+              text: 'Surface polish and gold-accent shading pass ready for client check-in.',
+            },
+          ],
+          links: {
+            receipt: 'https://wabisabistore.example/receipts/KODAWARI-C0626-02',
+            terms: 'https://wabisabistore.example/terms-of-use',
+            delivery: 'https://wabisabistore.example/delivery/KODAWARI-C0626-02',
+          },
+        },
+        {
+          id: 'pass-kintsugi-c0526-28',
+          handle: '@ren.kuroda',
+          clientName: 'Ren Kuroda • Studio Commission',
+          code: 'KINTSUGI-C0526-28',
+          packageTier: 'Kintsugi',
+          cycle: 5,
+          slot: 28,
+          year: '26',
+          status: 'Completed',
+          stageIndex: 3,
+          updatedAt: 'Nov 12, 2026',
+          updates: [
+            {
+              id: 'upd-4',
+              date: 'Nov 12, 2026',
+              text: 'Final archive delivered and confirmed. Thank you for commissioning Wabi Sabi Store!',
+            },
+          ],
+          links: {
+            receipt: 'https://wabisabistore.example/receipts/KINTSUGI-C0526-28',
+            terms: 'https://wabisabistore.example/terms-of-use',
+            delivery: 'https://wabisabistore.example/delivery/KINTSUGI-C0526-28',
+          },
+        },
+      ];
+    }
+
+    function detectClientReadOnlyMode() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const cFlag = (params.get('c') || '').toLowerCase();
+        const viewFlag = (params.get('view') || params.get('mode') || '').toLowerCase();
+        return cFlag === '1' || cFlag === 'true' || viewFlag === 'client' || viewFlag === 'readonly';
+      } catch (e) {
+        return false;
+      }
+    }
+
+    let state = {
+      passes: [],
+      activePassId: null,
+      builderVisible: true,
+      clientReadOnly: detectClientReadOnlyMode(),
+    };
+
+    const el = {
+      toast: document.getElementById('toast'),
+      toastIcon: document.getElementById('toast-icon'),
+      toastMsg: document.getElementById('toast-msg'),
+      copyFallbackModal: document.getElementById('copy-fallback-modal'),
+      copyFallbackTextarea: document.getElementById('copy-fallback-textarea'),
+      btnCloseFallback: document.getElementById('btn-close-fallback'),
+      btnRetryFallbackCopy: document.getElementById('btn-retry-fallback-copy'),
+      btnDoneFallback: document.getElementById('btn-done-fallback'),
+      savedPassesList: document.getElementById('saved-passes-list'),
+      btnNewPass: document.getElementById('btn-new-pass'),
+      btnResetSamples: document.getElementById('btn-reset-samples'),
+      btnToggleEditor: document.getElementById('btn-toggle-editor'),
+      toggleEditorLabel: document.getElementById('toggle-editor-label'),
+      btnCopyShareLink: document.getElementById('btn-copy-share-link'),
+      copyHeaderLinkLabel: document.getElementById('copy-header-link-label'),
+      btnExportStandalone: document.getElementById('btn-export-standalone'),
+      btnPrintPdf: document.getElementById('btn-print-pdf'),
+      passViewColumn: document.getElementById('pass-view-column'),
+      builderColumn: document.getElementById('builder-column'),
+      passCard3d: document.getElementById('pass-card-3d'),
+      passSheen: document.getElementById('pass-sheen'),
+      cardClientHandle: document.getElementById('card-client-handle'),
+      cardClientName: document.getElementById('card-client-name'),
+      cardStatusBadge: document.getElementById('card-status-badge'),
+      cardStatusDot: document.getElementById('card-status-dot'),
+      cardStatusText: document.getElementById('card-status-text'),
+      cardUpdatedAt: document.getElementById('card-updated-at'),
+      cardClientCode: document.getElementById('card-client-code'),
+      btnCopyCardCode: document.getElementById('btn-copy-card-code'),
+      copyCardCodeLabel: document.getElementById('copy-card-code-label'),
+      cardPackageTier: document.getElementById('card-package-tier'),
+      cardPackageDesc: document.getElementById('card-package-desc'),
+      cardCycleSlot: document.getElementById('card-cycle-slot'),
+      cardCycleProgressText: document.getElementById('card-cycle-progress-text'),
+      cardYearOrder: document.getElementById('card-year-order'),
+      cardStageSummary: document.getElementById('card-stage-summary'),
+      cardStageBar: document.getElementById('card-stage-bar'),
+      stageTrackerButtons: document.getElementById('stage-tracker-buttons'),
+      cardNotesCount: document.getElementById('card-notes-count'),
+      cardUpdatesFeed: document.getElementById('card-updates-feed'),
+      linkReceipt: document.getElementById('link-receipt'),
+      linkTerms: document.getElementById('link-terms'),
+      linkDelivery: document.getElementById('link-delivery'),
+      editHandle: document.getElementById('edit-handle'),
+      editClientName: document.getElementById('edit-client-name'),
+      editCode: document.getElementById('edit-code'),
+      btnAutoCode: document.getElementById('btn-auto-code'),
+      editPackage: document.getElementById('edit-package'),
+      editCycle: document.getElementById('edit-cycle'),
+      editSlot: document.getElementById('edit-slot'),
+      editStatus: document.getElementById('edit-status'),
+      editNewNote: document.getElementById('edit-new-note'),
+      btnAddNote: document.getElementById('btn-add-note'),
+      editLinkReceipt: document.getElementById('edit-link-receipt'),
+      editLinkTerms: document.getElementById('edit-link-terms'),
+      editLinkDelivery: document.getElementById('edit-link-delivery'),
+      shareUrlOutput: document.getElementById('share-url-output'),
+      shareUrlLength: document.getElementById('share-url-length'),
+      btnCopyHashLink: document.getElementById('btn-copy-hash-link'),
+      copyHashLinkLabel: document.getElementById('copy-hash-link-label'),
+      igDmMessage: document.getElementById('ig-dm-message'),
+      btnCopyIgDm: document.getElementById('btn-copy-ig-dm'),
+      copyIgDmLabel: document.getElementById('copy-ig-dm-label'),
+      btnSavePass: document.getElementById('btn-save-pass'),
+      btnDeletePass: document.getElementById('btn-delete-pass'),
+    };
+
+    let toastTimer = null;
+    function showToast(msg, icon = '✦') {
+      clearTimeout(toastTimer);
+      el.toastMsg.textContent = msg;
+      el.toastIcon.textContent = icon;
+      el.toast.classList.remove('translate-y-24', 'opacity-0');
+      el.toast.classList.add('translate-y-0', 'opacity-100');
+      toastTimer = setTimeout(() => {
+        el.toast.classList.remove('translate-y-0', 'opacity-100');
+        el.toast.classList.add('translate-y-24', 'opacity-0');
+      }, 2600);
+    }
+
+    function openFallbackCopyModal(text) {
+      el.copyFallbackTextarea.value = text;
+      el.copyFallbackModal.classList.remove('hidden');
+      el.copyFallbackModal.classList.add('flex');
+      setTimeout(() => {
+        el.copyFallbackTextarea.focus();
+        el.copyFallbackTextarea.select();
+      }, 20);
+    }
+
+    function closeFallbackCopyModal() {
+      el.copyFallbackModal.classList.add('hidden');
+      el.copyFallbackModal.classList.remove('flex');
+    }
+
+    function tryExecCommandCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+
+      let copied = false;
+      try {
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        copied = Boolean(document.execCommand('copy'));
+      } catch (e) {
+        copied = false;
+      } finally {
+        document.body.removeChild(ta);
+      }
+      return copied;
+    }
+
+    function pulseButtonLabel(labelEl, temporaryLabel) {
+      if (!labelEl || !temporaryLabel) return;
+      if (!labelEl.dataset.origLabel) {
+        labelEl.dataset.origLabel = labelEl.textContent;
+      }
+      labelEl.textContent = temporaryLabel;
+      clearTimeout(labelEl._pulseTimer);
+      labelEl._pulseTimer = setTimeout(() => {
+        labelEl.textContent = labelEl.dataset.origLabel;
+      }, 1500);
+    }
+
+    /**
+     * Reliable copy helper:
+     * 1) Tries navigator.clipboard.writeText when available
+     * 2) Falls back synchronously to document.execCommand('copy')
+     * 3) Opens an interactive selection modal if permissions are blocked
+     */
+    async function copyText(text, successMsg = 'Copied to clipboard.', options = {}) {
+      if (!text) return false;
+      const { labelEl = null, copiedLabel = 'Copied!' } = options;
+
+      const onSuccess = () => {
+        pulseButtonLabel(labelEl, copiedLabel);
+        showToast(successMsg, '✓');
+        return true;
+      };
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function' && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return onSuccess();
+        } catch (err) {
+          // Proceed to execCommand fallback
+        }
+      }
+
+      if (tryExecCommandCopy(text)) {
+        return onSuccess();
+      }
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(text);
+          return onSuccess();
+        } catch (err) {
+          // Fall through to manual selection modal
+        }
+      }
+
+      openFallbackCopyModal(text);
+      showToast('Select and copy from the box (Ctrl/Cmd + C).', '!');
+      return false;
+    }
+
+    function pad2(num) {
+      return String(Math.max(1, parseInt(num, 10) || 1)).padStart(2, '0');
+    }
+
+    function formatToday() {
+      return new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function sanitizeUrl(url) {
+      const trimmed = (url || '').trim();
+      if (!trimmed) return '#';
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      return 'https://' + trimmed.replace(/^\/+/, '');
+    }
+
+    function getActivePass() {
+      return state.passes.find((p) => p.id === state.activePassId) || state.passes[0];
+    }
+
+    function computeCumulativeOrder(pass) {
+      const c = Math.max(1, parseInt(pass.cycle, 10) || 1);
+      const s = Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(pass.slot, 10) || 1));
+      return (c - 1) * CYCLE_CAPACITY + s;
+    }
+
+    function buildStandardCode(pass) {
+      const meta = PACKAGE_META[pass.packageTier] || PACKAGE_META['Kōgei'];
+      const cStr = pad2(pass.cycle);
+      const sStr = pad2(pass.slot);
+      const yStr = String(pass.year || '26').replace(/[^0-9]/g, '').slice(-2) || '26';
+      return `${meta.codePrefix}-C${cStr}${yStr}-${sStr}`;
+    }
+
+    // Compact URL Hash Encoding (#p=...) + Backwards Compatibility for Legacy #pass=...
+    const PKG_SHORT_MAP = {
+      Kintsugi: 'kin',
+      Kodawari: 'kod',
+      'Kōgei': 'kog',
+    };
+    const PKG_EXPAND_MAP = {
+      kin: 'Kintsugi',
+      kod: 'Kodawari',
+      kog: 'Kōgei',
+    };
+    const STATUS_SHORT_MAP = {
+      Reserved: 'r',
+      'In Production': 'p',
+      'Awaiting Review': 'a',
+      Completed: 'c',
+    };
+    const STATUS_EXPAND_MAP = {
+      r: 'Reserved',
+      p: 'In Production',
+      a: 'Awaiting Review',
+      c: 'Completed',
+    };
+
+    function toBase64Url(bytes) {
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function fromBase64Url(raw) {
+      let base64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) base64 += '=';
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
+    }
+
+    function normalizeDecodedPass(parsed, fallbackIdPrefix) {
+      if (!parsed || typeof parsed !== 'object') return null;
+      const pkgRaw = parsed.packageTier || (parsed.k ? PKG_EXPAND_MAP[parsed.k] : null);
+      const packageTier = PACKAGE_META[pkgRaw] ? pkgRaw : 'Kōgei';
+      const cycle = Math.max(1, parseInt(parsed.cycle ?? parsed.c, 10) || 1);
+      const slot = Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(parsed.slot ?? parsed.s, 10) || 1));
+      const year = String(parsed.year ?? parsed.y ?? '26').replace(/[^0-9]/g, '').slice(-2) || '26';
+      const statusRaw = parsed.status || (parsed.st ? STATUS_EXPAND_MAP[parsed.st] : null);
+      const status = ['Reserved', 'In Production', 'Awaiting Review', 'Completed'].includes(statusRaw)
+        ? statusRaw
+        : 'In Production';
+      const stageIndex = Math.min(3, Math.max(0, parseInt(parsed.stageIndex ?? parsed.g, 10) || 0));
+      const handle = String(parsed.handle ?? parsed.h ?? '@client').trim() || '@client';
+      const clientName = String(parsed.clientName ?? parsed.n ?? 'Studio Commission').trim();
+      const code =
+        String(parsed.code ?? parsed.cd ?? '')
+          .trim()
+          .toUpperCase() || `${PACKAGE_META[packageTier].codePrefix}-C${pad2(cycle)}${year}-${pad2(slot)}`;
+
+      const rawUpdates = Array.isArray(parsed.updates)
+        ? parsed.updates
+        : Array.isArray(parsed.u)
+          ? parsed.u.map((entry, idx) =>
+              Array.isArray(entry)
+                ? { id: `u-${idx}`, date: entry[1] || formatToday(), text: entry[0] || '' }
+                : entry
+            )
+          : [];
+
+      const updates = rawUpdates
+        .map((u, idx) => ({
+          id: u.id || `upd-${idx}`,
+          date: String(u.date || formatToday()),
+          text: String(u.text || '').trim(),
+        }))
+        .filter((u) => u.text.length > 0)
+        .slice(0, 20);
+
+      const linksSource = parsed.links || parsed.l || {};
+      const receipt = Array.isArray(linksSource) ? linksSource[0] : linksSource.receipt ?? linksSource.r;
+      const terms = Array.isArray(linksSource) ? linksSource[1] : linksSource.terms ?? linksSource.t;
+      const delivery = Array.isArray(linksSource) ? linksSource[2] : linksSource.delivery ?? linksSource.d;
+
+      return {
+        id: String(parsed.id || `${fallbackIdPrefix}-${Date.now().toString(36)}`),
+        handle,
+        clientName,
+        code,
+        packageTier,
+        cycle,
+        slot,
+        year,
+        status,
+        stageIndex,
+        updatedAt: String(parsed.updatedAt ?? parsed.dt ?? formatToday()),
+        updates,
+        links: {
+          receipt: String(receipt || '#'),
+          terms: String(terms || '#'),
+          delivery: String(delivery || '#'),
+        },
+      };
+    }
+
+    function encodePassToCompactHash(pass) {
+      const compactPayload = {
+        h: pass.handle || '@client',
+        cd: pass.code || buildStandardCode(pass),
+        k: PKG_SHORT_MAP[pass.packageTier] || 'kog',
+        c: Math.max(1, parseInt(pass.cycle, 10) || 1),
+        s: Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(pass.slot, 10) || 1)),
+        y: String(pass.year || '26').slice(-2),
+        st: STATUS_SHORT_MAP[pass.status] || 'p',
+        g: Math.min(3, Math.max(0, parseInt(pass.stageIndex, 10) || 0)),
+        dt: pass.updatedAt || formatToday(),
+      };
+
+      if (pass.clientName && pass.clientName !== 'Studio Commission') {
+        compactPayload.n = pass.clientName;
+      }
+
+      const compactUpdates = (pass.updates || [])
+        .slice(0, 4)
+        .filter((u) => u && u.text)
+        .map((u) => [String(u.text).slice(0, 140), String(u.date || formatToday()).slice(0, 14)]);
+      if (compactUpdates.length > 0) {
+        compactPayload.u = compactUpdates;
+      }
+
+      const l = pass.links || {};
+      const compactLinks = [
+        l.receipt && l.receipt !== '#' ? String(l.receipt).trim() : '',
+        l.terms && l.terms !== '#' ? String(l.terms).trim() : '',
+        l.delivery && l.delivery !== '#' ? String(l.delivery).trim() : '',
+      ];
+      if (compactLinks.some(Boolean)) {
+        compactPayload.l = compactLinks;
+      }
+
+      const bytes = new TextEncoder().encode(JSON.stringify(compactPayload));
+      return `#p=${toBase64Url(bytes)}`;
+    }
+
+    function decodePassFromHash(hashStr) {
+      if (!hashStr) return null;
+      try {
+        if (hashStr.includes('#p=')) {
+          const raw = hashStr.split('#p=')[1].split('&')[0];
+          if (!raw) return null;
+          const jsonStr = fromBase64Url(raw);
+          return normalizeDecodedPass(JSON.parse(jsonStr), 'dm-pass');
+        }
+        if (hashStr.includes('#pass=')) {
+          const raw = hashStr.split('#pass=')[1].split('&')[0];
+          if (!raw) return null;
+          const jsonStr = fromBase64Url(raw);
+          return normalizeDecodedPass(JSON.parse(jsonStr), 'legacy-pass');
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    const LIVE_BASE_URL = 'https://wabisabistorejp.netlify.app';
+
+    function getShareBaseUrl() {
+      const currentBase = window.location.href.split('#')[0];
+      if (/^https?:\/\//i.test(currentBase)) {
+        return currentBase;
+      }
+      return LIVE_BASE_URL;
+    }
+
+    function buildShareableUrl(pass) {
+      const base = getShareBaseUrl().split('?')[0];
+      return `${base}?c=1${encodePassToCompactHash(pass)}`;
+    }
+
+    function updateUrlLengthIndicator(url) {
+      const len = String(url || '').length;
+      if (len <= 180) {
+        el.shareUrlLength.textContent = `${len} chars · Super Short DM`;
+        el.shareUrlLength.className =
+          'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30';
+      } else if (len <= 320) {
+        el.shareUrlLength.textContent = `${len} chars · DM Friendly`;
+        el.shareUrlLength.className =
+          'text-[10px] font-mono px-2 py-0.5 rounded-full bg-goldLux/15 text-goldLux border border-goldLux/35';
+      } else {
+        el.shareUrlLength.textContent = `${len} chars · Long Link`;
+        el.shareUrlLength.className =
+          'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/35';
+      }
+    }
+
+    function buildInstagramDmText(pass, shareUrl) {
+      const stageLabel = STAGES[Math.min(3, Math.max(0, parseInt(pass.stageIndex, 10) || 0))];
+      const latestNote = Array.isArray(pass.updates) && pass.updates.length > 0 ? pass.updates[0].text : '';
+      const handle = pass.handle || '@client';
+      const code = pass.code || buildStandardCode(pass);
+      const line2 = latestNote ? `${stageLabel} — ${latestNote}` : `${stageLabel} (${pass.status || 'In Production'})`;
+      return `${handle} · ${code}\n${line2}\nPass: ${shareUrl}`;
+    }
+
+    function savePassesToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.passes));
+      } catch (e) {
+        // Ignore storage quota issues
+      }
+    }
+
+    function loadPasses() {
+      let loaded = [];
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loaded = parsed;
+          }
+        }
+      } catch (e) {
+        loaded = [];
+      }
+
+      if (loaded.length === 0) {
+        loaded = createDefaultPasses();
+      }
+
+      state.passes = loaded;
+      state.activePassId = state.passes[0].id;
+
+      // Check if URL has #p=... or legacy #pass=... payload
+      const sharedPass = decodePassFromHash(window.location.hash);
+      if (sharedPass) {
+        if (state.clientReadOnly) {
+          state.passes = [sharedPass];
+          state.activePassId = sharedPass.id;
+        } else {
+          const existingIdx = state.passes.findIndex(
+            (p) => p.id === sharedPass.id || p.code.toUpperCase() === sharedPass.code.toUpperCase()
+          );
+          if (existingIdx !== -1) {
+            state.passes[existingIdx] = {
+              ...sharedPass,
+              id: state.passes[existingIdx].id,
+              updates: Array.isArray(sharedPass.updates) ? sharedPass.updates : [],
+            };
+            state.activePassId = state.passes[existingIdx].id;
+          } else {
+            state.passes.unshift(sharedPass);
+            state.activePassId = sharedPass.id;
+          }
+          savePassesToStorage();
+          showToast(`Loaded shared pass: ${sharedPass.code}`, '✦');
+        }
+      }
+    }
+
+    function syncEditorInputs(pass) {
+      el.editHandle.value = pass.handle || '';
+      el.editClientName.value = pass.clientName || '';
+      el.editCode.value = pass.code || '';
+      el.editPackage.value = pass.packageTier || 'Kōgei';
+      el.editCycle.value = pass.cycle || 1;
+      el.editSlot.value = pass.slot || 1;
+      el.editStatus.value = pass.status || 'In Production';
+      el.editLinkReceipt.value = pass.links && pass.links.receipt && pass.links.receipt !== '#' ? pass.links.receipt : '';
+      el.editLinkTerms.value = pass.links && pass.links.terms && pass.links.terms !== '#' ? pass.links.terms : '';
+      el.editLinkDelivery.value = pass.links && pass.links.delivery && pass.links.delivery !== '#' ? pass.links.delivery : '';
+    }
+
+    function renderSavedPassesBar() {
+      el.savedPassesList.innerHTML = '';
+      state.passes.forEach((pass) => {
+        const isActive = pass.id === state.activePassId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = isActive
+          ? 'px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-goldLux/20 text-goldLux border border-goldLux/60 shadow-sm transition cursor-pointer'
+          : 'px-3 py-1.5 rounded-xl text-xs font-mono bg-obsidian/70 hover:bg-plumDeep text-muted hover:text-ivory border border-goldLux/20 transition cursor-pointer';
+        btn.textContent = `${pass.code} · ${pass.handle || '@client'}`;
+        btn.addEventListener('click', () => {
+          editingNoteId = null;
+          state.activePassId = pass.id;
+          syncEditorInputs(pass);
+          renderAll();
+        });
+        el.savedPassesList.appendChild(btn);
+      });
+    }
+
+    function applyStatusBadgeStyle(status) {
+      const badge = el.cardStatusBadge;
+      const dot = el.cardStatusDot;
+      const text = el.cardStatusText;
+
+      if (status === 'Completed') {
+        text.textContent = status;
+        text.className = 'completed-pulse-text inline-flex items-center gap-1';
+        badge.className = 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase border bg-[#22C55E]/20 text-[#4ADE80] border-[#4ADE80]/70 shadow-md shadow-[#22C55E]/20 ring-1 ring-[#4ADE80]/35';
+        dot.className = 'w-2 h-2 rounded-full bg-[#4ADE80] completed-pulse-dot';
+      } else if (status === 'Awaiting Review') {
+        text.className = '';
+        text.textContent = status;
+        badge.className = 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase border bg-goldLux/20 text-goldLux border-goldLux/50';
+        dot.className = 'w-2 h-2 rounded-full bg-goldLux animate-pulse';
+      } else if (status === 'Reserved') {
+        text.className = '';
+        text.textContent = status;
+        badge.className = 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase border bg-plumDeep text-ivory border-goldLux/30';
+        dot.className = 'w-2 h-2 rounded-full bg-goldLux/70';
+      } else {
+        text.className = '';
+        text.textContent = status;
+        badge.className = 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase border bg-[#22C55E]/15 text-[#4ADE80] border-[#22C55E]/45 shadow-sm';
+        dot.className = 'w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse';
+      }
+    }
+
+    function renderStageTracker(pass) {
+      const idx = Math.min(3, Math.max(0, parseInt(pass.stageIndex, 10) || 0));
+      const pct = ((idx + 1) / STAGES.length) * 100;
+      el.cardStageBar.style.width = `${pct}%`;
+      el.cardStageSummary.textContent = `Stage ${idx + 1} of ${STAGES.length} · ${STAGES[idx]}`;
+
+      el.stageTrackerButtons.innerHTML = '';
+      STAGES.forEach((stageName, sIdx) => {
+        const isCompleted = sIdx < idx;
+        const isCurrent = sIdx === idx;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+
+        if (isCurrent) {
+          btn.className = 'p-3 rounded-xl border text-left transition bg-gradient-to-br from-goldLux/25 to-violetRim/15 border-goldLux text-ivory shadow-sm cursor-pointer';
+        } else if (isCompleted) {
+          btn.className = 'p-3 rounded-xl border text-left transition bg-plumDeep/90 border-goldLux/40 text-goldLux hover:border-goldLux cursor-pointer';
+        } else {
+          btn.className = 'p-3 rounded-xl border text-left transition bg-obsidian/65 border-white/10 text-muted hover:text-ivory hover:border-goldLux/30 cursor-pointer';
+        }
+
+        const indicator = isCompleted ? '✓ Done' : isCurrent ? '● Active' : `0${sIdx + 1}`;
+        btn.innerHTML = `
+          <span class="block text-[10px] font-mono uppercase tracking-wider opacity-80">${indicator}</span>
+          <span class="block font-cinzel font-bold text-xs sm:text-sm mt-0.5">${stageName}</span>
+        `;
+
+        if (state.clientReadOnly) {
+          btn.disabled = true;
+          btn.className = btn.className.replace('cursor-pointer', 'cursor-default');
+        } else {
+          btn.addEventListener('click', () => {
+            pass.stageIndex = sIdx;
+            if (sIdx === STAGES.length - 1 && pass.status !== 'Completed') {
+              pass.status = 'Completed';
+              el.editStatus.value = 'Completed';
+            } else if (sIdx < STAGES.length - 1 && pass.status === 'Completed') {
+              pass.status = 'In Production';
+              el.editStatus.value = 'In Production';
+            }
+            pass.updatedAt = formatToday();
+            savePassesToStorage();
+            renderAll();
+            showToast(`${pass.code} set to ${stageName}`, '✦');
+          });
+        }
+
+        el.stageTrackerButtons.appendChild(btn);
+      });
+    }
+
+    let editingNoteId = null;
+
+    function renderUpdatesFeed(pass) {
+      const list = Array.isArray(pass.updates) ? pass.updates : [];
+      el.cardNotesCount.textContent = `${list.length} ${list.length === 1 ? 'update' : 'updates'}`;
+      el.cardUpdatesFeed.innerHTML = '';
+
+      if (list.length === 0) {
+        el.cardUpdatesFeed.innerHTML = `
+          <div class="rounded-xl bg-obsidian/60 border border-white/10 p-3.5 text-xs text-muted">
+            No studio updates logged yet for this pass.
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach((item, index) => {
+        const noteId = item.id || `upd-${index}`;
+        item.id = noteId;
+        const isEditing = editingNoteId === noteId;
+
+        const row = document.createElement('div');
+        row.className = 'rounded-xl bg-obsidian/75 border border-goldLux/15 p-3.5 space-y-2.5 transition';
+
+        if (isEditing) {
+          row.innerHTML = `
+            <div class="space-y-2">
+              <textarea
+                data-edit-note-input="${escapeHtml(noteId)}"
+                rows="2"
+                class="luxury-input w-full px-3 py-2 rounded-xl text-xs sm:text-sm text-ivory leading-relaxed resize-y"
+              >${escapeHtml(item.text)}</textarea>
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-[11px] font-mono text-goldLux/80">${escapeHtml(item.date)}</span>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    data-cancel-note="${escapeHtml(noteId)}"
+                    class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-plumDeep hover:bg-obsidian text-muted hover:text-ivory border border-white/10 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    data-save-note="${escapeHtml(noteId)}"
+                    class="px-3 py-1 rounded-lg text-[11px] font-bold bg-goldLux/25 hover:bg-goldLux/35 text-goldLux border border-goldLux/50 transition cursor-pointer"
+                  >
+                    Save Note
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+
+          const textarea = row.querySelector(`[data-edit-note-input="${noteId}"]`);
+          const saveBtn = row.querySelector(`[data-save-note="${noteId}"]`);
+          const cancelBtn = row.querySelector(`[data-cancel-note="${noteId}"]`);
+
+          const commitEdit = () => {
+            const updatedText = (textarea.value || '').trim();
+            if (!updatedText) {
+              showToast('Note cannot be empty. Use Remove to delete it.', '!');
+              textarea.focus();
+              return;
+            }
+            pass.updates[index] = {
+              ...item,
+              text: updatedText,
+              date: formatToday(),
+            };
+            pass.updatedAt = formatToday();
+            editingNoteId = null;
+            savePassesToStorage();
+            renderAll();
+            showToast('Studio note updated.', '✦');
+          };
+
+          saveBtn.addEventListener('click', commitEdit);
+          cancelBtn.addEventListener('click', () => {
+            editingNoteId = null;
+            renderAll();
+          });
+          textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              commitEdit();
+            } else if (e.key === 'Escape') {
+              editingNoteId = null;
+              renderAll();
+            }
+          });
+        } else {
+          const actionsHtml = state.clientReadOnly
+            ? ''
+            : `
+            <div class="no-print flex items-center justify-end gap-2 pt-1 border-t border-white/5">
+              <button
+                type="button"
+                data-edit-note="${escapeHtml(noteId)}"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-goldLux hover:text-ivory bg-goldLux/10 hover:bg-goldLux/20 border border-goldLux/25 transition cursor-pointer"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-remove-note="${escapeHtml(noteId)}"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-400 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-400/25 transition cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>`;
+
+          row.innerHTML = `
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+              <p class="text-xs sm:text-sm text-ivory/95 leading-relaxed flex-1">${escapeHtml(item.text)}</p>
+              <span class="text-[11px] font-mono text-goldLux/80 shrink-0">${escapeHtml(item.date)}</span>
+            </div>
+            ${actionsHtml}
+          `;
+
+          const editBtn = row.querySelector(`[data-edit-note="${noteId}"]`);
+          const removeBtn = row.querySelector(`[data-remove-note="${noteId}"]`);
+
+          if (editBtn) editBtn.addEventListener('click', () => {
+            editingNoteId = noteId;
+            renderAll();
+            setTimeout(() => {
+              const inputEl = el.cardUpdatesFeed.querySelector(`[data-edit-note-input="${noteId}"]`);
+              if (inputEl) {
+                inputEl.focus();
+                inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+              }
+            }, 20);
+          });
+
+          if (removeBtn) removeBtn.addEventListener('click', () => {
+            pass.updates.splice(index, 1);
+            if (editingNoteId === noteId) {
+              editingNoteId = null;
+            }
+            pass.updatedAt = formatToday();
+            savePassesToStorage();
+            renderAll();
+            showToast('Studio note removed.', '✦');
+          });
+        }
+
+        el.cardUpdatesFeed.appendChild(row);
+      });
+    }
+
+    function renderCard(pass) {
+      const meta = PACKAGE_META[pass.packageTier] || PACKAGE_META['Kōgei'];
+      const cStr = pad2(pass.cycle);
+      const sStr = pad2(pass.slot);
+      const cumOrder = computeCumulativeOrder(pass);
+
+      el.cardClientHandle.textContent = pass.handle || '@client';
+      el.cardClientName.textContent = pass.clientName || 'Commissioned Studio Pass';
+      el.cardUpdatedAt.textContent = `Updated ${pass.updatedAt || formatToday()}`;
+      el.cardClientCode.textContent = pass.code || buildStandardCode(pass);
+
+      applyStatusBadgeStyle(pass.status || 'In Production');
+
+      el.cardPackageTier.textContent = meta.tier;
+      el.cardPackageDesc.textContent = meta.desc;
+      el.cardCycleSlot.textContent = `Cycle ${cStr} · Slot ${sStr} / ${CYCLE_CAPACITY}`;
+      el.cardCycleProgressText.textContent = `${parseInt(pass.slot, 10) || 1} of ${CYCLE_CAPACITY} cycle slots active`;
+      el.cardYearOrder.textContent = `20${pass.year || '26'} · #${cumOrder}`;
+
+      renderStageTracker(pass);
+      renderUpdatesFeed(pass);
+
+      const links = pass.links || {};
+      el.linkReceipt.href = sanitizeUrl(links.receipt);
+      el.linkTerms.href = sanitizeUrl(links.terms);
+      el.linkDelivery.href = sanitizeUrl(links.delivery);
+
+      const shareUrl = buildShareableUrl(pass);
+      el.shareUrlOutput.value = shareUrl;
+      updateUrlLengthIndicator(shareUrl);
+      el.igDmMessage.value = buildInstagramDmText(pass, shareUrl);
+
+      try {
+        window.history.replaceState(null, '', encodePassToCompactHash(pass));
+      } catch (e) {
+        // Ignore history restriction in sandboxed iframes
+      }
+    }
+
+    function renderAll() {
+      const pass = getActivePass();
+      if (!pass) return;
+      renderSavedPassesBar();
+      renderCard(pass);
+    }
+
+    // 3D Tilt & Metallic Sheen Interaction
+    function init3DTilt() {
+      const card = el.passCard3d;
+      const maxTilt = 7.5;
+
+      function handleMove(clientX, clientY) {
+        const rect = card.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const xNorm = (clientX - rect.left) / rect.width;
+        const yNorm = (clientY - rect.top) / rect.height;
+
+        const rotateY = (xNorm - 0.5) * maxTilt * 2;
+        const rotateX = (0.5 - yNorm) * maxTilt * 2;
+
+        card.style.transform = `rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateZ(6px)`;
+        el.passSheen.style.setProperty('--shine-x', `${(xNorm * 100).toFixed(1)}%`);
+        el.passSheen.style.setProperty('--shine-y', `${(yNorm * 100).toFixed(1)}%`);
+        card.classList.add('is-tilting');
+      }
+
+      function resetTilt() {
+        card.style.transform = 'rotateX(0deg) rotateY(0deg) translateZ(0px)';
+        card.classList.remove('is-tilting');
+      }
+
+      card.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+      card.addEventListener('mouseleave', resetTilt);
+
+      card.addEventListener(
+        'touchmove',
+        (e) => {
+          if (e.touches && e.touches.length > 0) {
+            handleMove(e.touches[0].clientX, e.touches[0].clientY);
+          }
+        },
+        { passive: true }
+      );
+      card.addEventListener('touchend', resetTilt);
+    }
+
+    // Standalone HTML Export for Current Pass
+    function exportStandalonePassHtml(pass) {
+      const safeCode = escapeHtml(pass.code || 'PASS');
+      const safeHandle = escapeHtml(pass.handle || '@client');
+      const safeName = escapeHtml(pass.clientName || 'Studio Commission');
+      const safeTier = escapeHtml(pass.packageTier || 'Kōgei');
+      const safeStatus = escapeHtml(pass.status || 'In Production');
+      const cStr = pad2(pass.cycle);
+      const sStr = pad2(pass.slot);
+      const stageName = STAGES[Math.min(3, Math.max(0, pass.stageIndex || 0))];
+      const updatesHtml = (pass.updates || [])
+        .map(
+          (u) =>
+            `<div style="padding:12px 14px;border-radius:12px;background:rgba(11,9,16,0.7);border:1px solid rgba(201,162,77,0.18);margin-bottom:8px;display:flex;justify-content:space-between;gap:12px;">
+              <span style="font-size:13px;color:#f5f0ff;">${escapeHtml(u.text)}</span>
+              <span style="font-size:11px;font-family:monospace;color:#c9a24d;white-space:nowrap;">${escapeHtml(u.date)}</span>
+            </div>`
+        )
+        .join('');
+
+      const htmlDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wabi Sabi Store — ${safeCode}</title>
+</head>
+<body style="margin:0;min-height:100vh;background:#0b0910;color:#f5f0ff;font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px;">
+  <div style="max-width:640px;width:100%;background:linear-gradient(155deg,#1d162a,#14101d);border:1px solid rgba(201,162,77,0.4);border-radius:24px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.75);">
+    <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#c9a24d;font-weight:700;">Wabi Sabi Store · Client Order Pass</div>
+    <h1 style="margin:6px 0 2px;font-size:30px;font-family:Georgia,serif;">${safeHandle}</h1>
+    <div style="font-size:13px;color:#a69bb8;">${safeName} · Status: <strong style="color:#f5f0ff;">${safeStatus}</strong></div>
+    <div style="margin:18px 0;padding:16px;border-radius:16px;background:#0b0910;border:1px solid rgba(201,162,77,0.35);">
+      <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#a69bb8;">Client Code</div>
+      <div style="font-family:monospace;font-size:26px;font-weight:800;color:#c9a24d;margin-top:4px;">${safeCode}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;font-size:12px;">
+      <div style="padding:12px;border-radius:12px;background:rgba(20,16,29,0.9);border:1px solid rgba(201,162,77,0.2);">
+        <div style="color:#a69bb8;font-size:10px;text-transform:uppercase;">Package</div>
+        <div style="font-weight:700;margin-top:4px;">${safeTier}</div>
+      </div>
+      <div style="padding:12px;border-radius:12px;background:rgba(20,16,29,0.9);border:1px solid rgba(201,162,77,0.2);">
+        <div style="color:#a69bb8;font-size:10px;text-transform:uppercase;">Cycle &amp; Slot</div>
+        <div style="font-family:monospace;font-weight:700;margin-top:4px;">C${cStr} · ${sStr}/30</div>
+      </div>
+      <div style="padding:12px;border-radius:12px;background:rgba(20,16,29,0.9);border:1px solid rgba(201,162,77,0.2);">
+        <div style="color:#a69bb8;font-size:10px;text-transform:uppercase;">Stage</div>
+        <div style="font-weight:700;color:#a855f7;margin-top:4px;">${escapeHtml(stageName)}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#c9a24d;font-weight:700;margin-bottom:10px;">Studio Notes &amp; Updates</div>
+    ${updatesHtml || '<p style="font-size:12px;color:#a69bb8;">No notes recorded.</p>'}
+    <div style="margin-top:18px;display:flex;gap:14px;flex-wrap:wrap;font-size:12px;">
+      <a href="${escapeHtml(sanitizeUrl(pass.links && pass.links.receipt))}" style="color:#c9a24d;">Receipt ↗</a>
+      <a href="${escapeHtml(sanitizeUrl(pass.links && pass.links.terms))}" style="color:#c9a24d;">Terms of Use ↗</a>
+      <a href="${escapeHtml(sanitizeUrl(pass.links && pass.links.delivery))}" style="color:#a855f7;">Preview / Delivery ↗</a>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `wabi-sabi-pass-${(pass.code || 'client').toLowerCase()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Exported standalone HTML for ${pass.code}`, '✦');
+    }
+
+    // Wire Editor & Action Listeners
+    function bindEvents() {
+      el.btnCloseFallback.addEventListener('click', closeFallbackCopyModal);
+      el.btnDoneFallback.addEventListener('click', closeFallbackCopyModal);
+      el.copyFallbackModal.addEventListener('click', (e) => {
+        if (e.target === el.copyFallbackModal) closeFallbackCopyModal();
+      });
+      el.btnRetryFallbackCopy.addEventListener('click', () => {
+        const val = el.copyFallbackTextarea.value;
+        el.copyFallbackTextarea.focus();
+        el.copyFallbackTextarea.select();
+        el.copyFallbackTextarea.setSelectionRange(0, val.length);
+        try {
+          if (document.execCommand('copy')) {
+            closeFallbackCopyModal();
+            showToast('Copied to clipboard!', '✓');
+          } else {
+            showToast('Highlighted—press Ctrl/Cmd + C.', '!');
+          }
+        } catch (err) {
+          showToast('Highlighted—press Ctrl/Cmd + C.', '!');
+        }
+      });
+
+      el.btnToggleEditor.addEventListener('click', () => {
+        state.builderVisible = !state.builderVisible;
+        if (state.builderVisible) {
+          el.builderColumn.classList.remove('hidden');
+          el.passViewColumn.className = 'lg:col-span-7 pass-stage';
+          el.toggleEditorLabel.textContent = 'Hide Builder';
+        } else {
+          el.builderColumn.classList.add('hidden');
+          el.passViewColumn.className = 'lg:col-span-12 max-w-4xl mx-auto w-full pass-stage';
+          el.toggleEditorLabel.textContent = 'Show Builder';
+        }
+      });
+
+      el.btnCopyCardCode.addEventListener('click', () => {
+        const pass = getActivePass();
+        if (pass) {
+          copyText(pass.code, `Copied code ${pass.code}`, {
+            labelEl: el.copyCardCodeLabel,
+            copiedLabel: 'Copied!',
+          });
+        }
+      });
+
+      el.btnCopyShareLink.addEventListener('click', () => {
+        const pass = getActivePass();
+        if (pass) {
+          copyText(buildShareableUrl(pass), 'Copied short DM pass link!', {
+            labelEl: el.copyHeaderLinkLabel,
+            copiedLabel: 'Copied!',
+          });
+        }
+      });
+
+      el.btnCopyHashLink.addEventListener('click', () => {
+        copyText(el.shareUrlOutput.value, 'Copied short #p= link for Instagram DM!', {
+          labelEl: el.copyHashLinkLabel,
+          copiedLabel: 'Copied!',
+        });
+      });
+
+      el.btnCopyIgDm.addEventListener('click', () => {
+        copyText(el.igDmMessage.value, 'Copied Instagram DM update text!', {
+          labelEl: el.copyIgDmLabel,
+          copiedLabel: 'Copied!',
+        });
+      });
+
+      el.btnExportStandalone.addEventListener('click', () => {
+        const pass = getActivePass();
+        if (pass) exportStandalonePassHtml(pass);
+      });
+
+      el.btnPrintPdf.addEventListener('click', () => {
+        window.print();
+      });
+
+      // Live edits from builder inputs (auto-persisted to localStorage + URL hash)
+      const onFieldChange = (shouldPersist = true) => {
+        const pass = getActivePass();
+        if (!pass) return;
+        pass.handle = el.editHandle.value.trim() || '@client';
+        pass.clientName = el.editClientName.value.trim();
+        pass.code = (el.editCode.value.trim() || buildStandardCode(pass)).toUpperCase();
+        pass.packageTier = el.editPackage.value;
+        pass.cycle = Math.max(1, parseInt(el.editCycle.value, 10) || 1);
+        pass.slot = Math.min(CYCLE_CAPACITY, Math.max(1, parseInt(el.editSlot.value, 10) || 1));
+        pass.status = el.editStatus.value;
+        pass.links = {
+          receipt: el.editLinkReceipt.value.trim() || '#',
+          terms: el.editLinkTerms.value.trim() || '#',
+          delivery: el.editLinkDelivery.value.trim() || '#',
+        };
+        pass.updatedAt = formatToday();
+        if (shouldPersist) {
+          savePassesToStorage();
+        }
+        renderAll();
+      };
+
+      [
+        el.editHandle,
+        el.editClientName,
+        el.editCode,
+        el.editPackage,
+        el.editCycle,
+        el.editSlot,
+        el.editStatus,
+        el.editLinkReceipt,
+        el.editLinkTerms,
+        el.editLinkDelivery,
+      ].forEach((input) => {
+        input.addEventListener('input', onFieldChange);
+        input.addEventListener('change', onFieldChange);
+      });
+
+      el.btnAutoCode.addEventListener('click', () => {
+        const pass = getActivePass();
+        if (!pass) return;
+        pass.code = buildStandardCode(pass);
+        el.editCode.value = pass.code;
+        pass.updatedAt = formatToday();
+        savePassesToStorage();
+        renderAll();
+        showToast(`Formatted code: ${pass.code}`, '✦');
+      });
+
+      el.btnAddNote.addEventListener('click', () => {
+        const pass = getActivePass();
+        if (!pass) return;
+        const text = el.editNewNote.value.trim();
+        if (!text) {
+          showToast('Enter a studio note first.', '!');
+          return;
+        }
+        pass.updates = Array.isArray(pass.updates) ? pass.updates : [];
+        pass.updates.unshift({
+          id: 'upd-' + Date.now().toString(36),
+          date: formatToday(),
+          text,
+        });
+        pass.updatedAt = formatToday();
+        el.editNewNote.value = '';
+        savePassesToStorage();
+        renderAll();
+        showToast('Studio update posted to pass.', '✦');
+      });
+
+      el.editNewNote.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.btnAddNote.click();
+        }
+      });
+
+      el.btnSavePass.addEventListener('click', () => {
+        const pass = getActivePass();
+        if (!pass) return;
+        onFieldChange();
+        savePassesToStorage();
+        renderAll();
+        showToast(`Saved pass ${pass.code} to browser storage.`, '✦');
+      });
+
+      el.btnNewPass.addEventListener('click', () => {
+        const nextNum = state.passes.length + 155;
+        const cycle = Math.ceil(nextNum / CYCLE_CAPACITY);
+        const slot = ((nextNum - 1) % CYCLE_CAPACITY) + 1;
+        const newPass = {
+          id: 'pass-' + Date.now().toString(36),
+          handle: `@new.client${state.passes.length + 1}`,
+          clientName: 'New Client • Studio Commission',
+          code: `KOGEI-C${pad2(cycle)}26-${pad2(slot)}`,
+          packageTier: 'Kōgei',
+          cycle,
+          slot,
+          year: '26',
+          status: 'Reserved',
+          stageIndex: 0,
+          updatedAt: formatToday(),
+          updates: [
+            {
+              id: 'upd-' + Date.now().toString(36),
+              date: formatToday(),
+              text: `Pass created for Cycle ${pad2(cycle)}, Slot ${pad2(slot)}/${CYCLE_CAPACITY}.`,
+            },
+          ],
+          links: {
+            receipt: '',
+            terms: '',
+            delivery: '',
+          },
+        };
+        state.passes.unshift(newPass);
+        state.activePassId = newPass.id;
+        savePassesToStorage();
+        syncEditorInputs(newPass);
+        renderAll();
+        showToast(`Created new pass ${newPass.code}`, '✦');
+      });
+
+      el.btnDeletePass.addEventListener('click', () => {
+        if (state.passes.length <= 1) {
+          showToast('Keep at least one active pass in the workspace.', '!');
+          return;
+        }
+        const removed = getActivePass();
+        state.passes = state.passes.filter((p) => p.id !== state.activePassId);
+        state.activePassId = state.passes[0].id;
+        savePassesToStorage();
+        syncEditorInputs(getActivePass());
+        renderAll();
+        showToast(`Removed pass ${removed ? removed.code : ''}`, '✦');
+      });
+
+      el.btnResetSamples.addEventListener('click', () => {
+        state.passes = createDefaultPasses();
+        state.activePassId = state.passes[0].id;
+        savePassesToStorage();
+        syncEditorInputs(getActivePass());
+        renderAll();
+        showToast('Restored default sample passes.', '✦');
+      });
+
+      window.addEventListener('hashchange', () => {
+        const shared = decodePassFromHash(window.location.hash);
+        if (shared) {
+          const idx = state.passes.findIndex((p) => p.code.toUpperCase() === shared.code.toUpperCase());
+          if (idx !== -1) {
+            state.passes[idx] = {
+              ...shared,
+              id: state.passes[idx].id,
+              updates: Array.isArray(shared.updates) ? shared.updates : [],
+            };
+            state.activePassId = state.passes[idx].id;
+          } else {
+            state.passes.unshift(shared);
+            state.activePassId = shared.id;
+          }
+          savePassesToStorage();
+          syncEditorInputs(getActivePass());
+          renderAll();
+        }
+      });
+    }
+
+    function applyClientReadOnlyLayout() {
+      if (!state.clientReadOnly) return;
+      state.builderVisible = false;
+      if (el.builderColumn) el.builderColumn.classList.add('hidden');
+      if (el.passViewColumn) {
+        el.passViewColumn.className = 'lg:col-span-12 max-w-3xl mx-auto w-full pass-stage';
+      }
+      const savedPassesSection = el.savedPassesList ? el.savedPassesList.closest('section') : null;
+      if (savedPassesSection) savedPassesSection.classList.add('hidden');
+      if (el.btnToggleEditor) el.btnToggleEditor.classList.add('hidden');
+      if (el.btnCopyShareLink) el.btnCopyShareLink.classList.add('hidden');
+      if (el.btnExportStandalone) el.btnExportStandalone.classList.add('hidden');
+      const trackerHint = el.passCard3d ? el.passCard3d.querySelector('h2 + p.text-xs.text-muted') : null;
+      if (trackerHint) {
+        trackerHint.textContent = 'Live commission stage progress for your order.';
+      }
+    }
+
+    // Boot
+    loadPasses();
+    const initialPass = getActivePass();
+    if (initialPass) {
+      syncEditorInputs(initialPass);
+    }
+    applyClientReadOnlyLayout();
+    bindEvents();
+    init3DTilt();
+    renderAll();
+  </script>
+</body>
+</html>
